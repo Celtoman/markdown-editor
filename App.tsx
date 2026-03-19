@@ -233,19 +233,20 @@ function App() {
 
   const previewPanel = (
     <div className="flex h-full min-h-[48vh] flex-col overflow-hidden rounded-2xl border bg-card">
-      <div className="flex items-center justify-between border-b px-4 py-3">
+      <div className="flex h-14 items-center justify-between border-b px-4">
         <div className="flex items-center gap-2">
           <FileCode2 className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-semibold">Предпросмотр</h2>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={handleCopy}>
+          <Button variant="outline" size="sm" onClick={handleCopy}>
             {isCopied ? <ClipboardCheck className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             {isCopied ? "Скопировано" : "Копировать"}
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
+            className="h-9 w-9"
             onClick={() => setIsPreviewFullscreen((prev) => !prev)}
             aria-label={isPreviewFullscreen ? "Выйти из полноэкранного режима" : "Войти в полноэкранный режим"}
           >
@@ -289,7 +290,7 @@ function App() {
                       className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border bg-card"
                       style={{ width: `${editorWidth}%` }}
                     >
-                      <div className="flex items-center justify-between border-b px-4 py-3">
+                      <div className="flex h-14 items-center justify-between border-b px-4">
                         <h2 className="text-sm font-semibold">Markdown</h2>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">{stats.words} слов</Badge>
@@ -333,7 +334,7 @@ function App() {
                 </TabsList>
                 <TabsContent value="editor">
                   <div className="overflow-hidden rounded-2xl border bg-card">
-                    <div className="flex items-center justify-between border-b px-4 py-3">
+                    <div className="flex h-14 items-center justify-between border-b px-4">
                       <h2 className="text-sm font-semibold">Markdown</h2>
                       <Button variant="outline" size="sm" onClick={() => setMarkdown("")}>
                         <Trash2 className="h-4 w-4" />
