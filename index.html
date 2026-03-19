@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Интерактивный Markdown Редактор | Онлайн-редактор с предпросмотром</title>
+    <meta name="description" content="Создавайте, редактируйте и просматривайте Markdown в реальном времени. Наш бесплатный онлайн-редактор Markdown предлагает мгновенный предпросмотр, статистику документа и удобный интерфейс.">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --background: oklch(1.0000 0 0);
+            --foreground: oklch(0.1884 0.0128 248.5103);
+            --card: #f7f8f8;
+            --card-foreground: oklch(0.1884 0.0128 248.5103);
+            --popover: oklch(1.0000 0 0);
+            --popover-foreground: oklch(0.1884 0.0128 248.5103);
+            --primary: oklch(0.6723 0.1606 244.9955);
+            --primary-foreground: oklch(1.0000 0 0);
+            --secondary: oklch(0.1884 0.0128 248.5103);
+            --secondary-foreground: oklch(1.0000 0 0);
+            --muted: oklch(0.9222 0.0013 286.3737);
+            --muted-foreground: oklch(0.1884 0.0128 248.5103);
+            --accent: oklch(0.9392 0.0166 250.8453);
+            --accent-foreground: oklch(0.6723 0.1606 244.9955);
+            --destructive: oklch(0.6188 0.2376 25.7658);
+            --destructive-foreground: oklch(1.0000 0 0);
+            --border: oklch(0.9317 0.0118 231.6594);
+            --input: oklch(0.9809 0.0025 228.7836);
+            --ring: oklch(0.6818 0.1584 243.3540);
+            --radius: 1.3rem;
+            --font-sans: 'Open Sans', sans-serif;
+            --font-serif: 'Georgia', serif;
+            --font-mono: 'Menlo', monospace;
+        }
+
+        .dark {
+            --background: oklch(0 0 0);
+            --foreground: oklch(0.9328 0.0025 228.7857);
+            --card: #17181c;
+            --card-foreground: oklch(0.8853 0 0);
+            --popover: oklch(0 0 0);
+            --popover-foreground: oklch(0.9328 0.0025 228.7857);
+            --primary: oklch(0.6692 0.1607 245.0110);
+            --primary-foreground: oklch(1.0000 0 0);
+            --secondary: oklch(0.9622 0.0035 219.5331);
+            --secondary-foreground: oklch(0.1884 0.0128 248.5103);
+            --muted: oklch(0.2090 0 0);
+            --muted-foreground: oklch(0.5637 0.0078 247.9662);
+            --accent: oklch(0.1928 0.0331 242.5459);
+            --accent-foreground: oklch(0.6692 0.1607 245.0110);
+            --destructive: oklch(0.6188 0.2376 25.7658);
+            --destructive-foreground: oklch(1.0000 0 0);
+            --border: oklch(0.2674 0.0047 248.0045);
+            --input: oklch(0.3020 0.0288 244.8244);
+            --ring: oklch(0.6818 0.1584 243.3540);
+        }
+
+        body {
+            background-color: var(--background);
+            color: var(--foreground);
+            font-family: var(--font-sans);
+        }
+
+        .markdown-body {
+            font-size: 16px;
+            line-height: 1.75;
+            color: var(--foreground);
+        }
+        .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+            line-height: 1.25;
+            letter-spacing: -0.025em;
+            color: var(--foreground);
+        }
+        .markdown-body h1 {
+            font-size: 2.25rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+        .markdown-body h2 {
+            font-size: 1.875rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+        .markdown-body h3 { font-size: 1.5rem; }
+        .markdown-body h4 { font-size: 1.25rem; }
+        .markdown-body p { margin-bottom: 1rem; }
+        .markdown-body ul, .markdown-body ol {
+            padding-left: 1.5rem;
+            margin-bottom: 1rem;
+            list-style-position: outside;
+        }
+        .markdown-body ul { list-style-type: disc; }
+        .markdown-body ol { list-style-type: decimal; }
+        .markdown-body li { margin-bottom: 0.5rem; }
+        .markdown-body > ul > li p, .markdown-body > ol > li p { margin-bottom: 0.5rem; }
+        .markdown-body blockquote {
+            padding-left: 1rem;
+            color: var(--muted-foreground);
+            border-left: 0.25rem solid var(--border);
+            margin: 0 0 1rem;
+        }
+        .markdown-body code {
+            padding: 0.2em 0.4em;
+            margin: 0;
+            font-size: 85%;
+            background-color: var(--muted);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            color: var(--foreground);
+        }
+        .markdown-body pre {
+            padding: 1rem;
+            overflow: auto;
+            font-size: 85%;
+            line-height: 1.45;
+            background-color: var(--muted);
+            border-radius: var(--radius);
+            margin-bottom: 1rem;
+        }
+        .dark .markdown-body pre {
+             background-color: oklch(0.1 0 0);
+        }
+        .markdown-body pre code {
+            display: inline;
+            max-width: auto;
+            padding: 0;
+            margin: 0;
+            overflow: visible;
+            line-height: inherit;
+            word-wrap: normal;
+            background-color: transparent;
+            border: 0;
+            color: inherit;
+        }
+        .markdown-body a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .markdown-body a:hover {
+            text-decoration: underline;
+        }
+        .markdown-body table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        .markdown-body th, .markdown-body td {
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+        }
+         .markdown-body th {
+            font-weight: 600;
+            color: var(--foreground);
+        }
+        .markdown-body tr {
+             background-color: transparent;
+        }
+        .markdown-body tr:nth-child(2n) {
+            background-color: var(--muted);
+        }
+        .markdown-body img {
+            max-width: 100%;
+            border-radius: var(--radius);
+        }
+    </style>
+    <script>
+      // Automatically set theme based on system preference
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.classList.add('dark');
+      }
+    </script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              background: 'var(--background)',
+              foreground: 'var(--foreground)',
+              card: 'var(--card)',
+              'card-foreground': 'var(--card-foreground)',
+              popover: 'var(--popover)',
+              'popover-foreground': 'var(--popover-foreground)',
+              primary: 'var(--primary)',
+              'primary-foreground': 'var(--primary-foreground)',
+              secondary: 'var(--secondary)',
+              'secondary-foreground': 'var(--secondary-foreground)',
+              muted: 'var(--muted)',
+              'muted-foreground': 'var(--muted-foreground)',
+              accent: 'var(--accent)',
+              'accent-foreground': 'var(--accent-foreground)',
+              destructive: 'var(--destructive)',
+              'destructive-foreground': 'var(--destructive-foreground)',
+              border: 'var(--border)',
+              input: 'var(--input)',
+              ring: 'var(--ring)',
+            },
+            borderRadius: {
+              lg: 'var(--radius)',
+              md: 'calc(var(--radius) - 2px)',
+              sm: 'calc(var(--radius) - 4px)',
+            },
+            fontFamily: {
+              sans: ['var(--font-sans)', 'sans-serif'],
+              mono: ['var(--font-mono)', 'monospace'],
+              serif: ['var(--font-serif)', 'serif'],
+            },
+          }
+        }
+      }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "react/": "https://aistudiocdn.com/react@^19.1.1/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+<div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>

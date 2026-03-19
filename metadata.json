@@ -1,0 +1,5 @@
+{
+  "name": "Interactive Markdown Editor",
+  "description": "A simple and modern tool for writing and previewing Markdown in real-time. Just type in the left panel and instantly see the result on the right.",
+  "requestFramePermissions": []
+}
