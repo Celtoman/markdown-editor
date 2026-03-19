@@ -158,6 +158,7 @@ function App() {
   const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>("editor");
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("split");
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isDesktop, setIsDesktop] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     return window.matchMedia("(min-width: 1024px)").matches;
@@ -303,19 +304,69 @@ function App() {
   }, [downloadTextFile, renderedHtml]);
 
   const handleExportPdf = useCallback(() => {
-    const printWindow = window.open("", "_blank", "noopener,noreferrer");
-    if (!printWindow) return;
+    if (isExportingPdf) return;
 
-    const htmlDocument = buildExportHtmlDocument(renderedHtml);
-    printWindow.document.open();
-    printWindow.document.write(htmlDocument);
-    printWindow.document.close();
+    const exportPdf = async () => {
+      setIsExportingPdf(true);
+      const container = document.createElement("div");
+      container.setAttribute("aria-hidden", "true");
+      container.style.position = "fixed";
+      container.style.left = "-99999px";
+      container.style.top = "0";
+      container.style.width = "794px";
+      container.style.background = "#ffffff";
+      container.style.color = "#1f2937";
+      container.style.padding = "0";
 
-    printWindow.onload = () => {
-      printWindow.focus();
-      printWindow.print();
+      container.innerHTML = `
+        <style>
+          .pdf-root { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; line-height: 1.65; max-width: 960px; margin: 0 auto; padding: 32px 20px; color: #1f2937; }
+          .pdf-root h1,.pdf-root h2,.pdf-root h3,.pdf-root h4,.pdf-root h5,.pdf-root h6 { line-height: 1.25; margin: 1.2em 0 .5em; }
+          .pdf-root h1,.pdf-root h2 { border-bottom: 1px solid #e5e7eb; padding-bottom: .3em; }
+          .pdf-root p,.pdf-root ul,.pdf-root ol,.pdf-root blockquote,.pdf-root pre,.pdf-root table { margin: 0 0 1em; }
+          .pdf-root ul,.pdf-root ol { padding-left: 1.4em; }
+          .pdf-root blockquote { border-left: 4px solid #d1d5db; margin-left: 0; padding-left: 1em; color: #6b7280; font-style: italic; }
+          .pdf-root code { background: #f3f4f6; border-radius: 6px; padding: .12em .4em; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+          .pdf-root pre { background: #f3f4f6; border-radius: 12px; padding: 14px; overflow: hidden; white-space: pre-wrap; word-break: break-word; }
+          .pdf-root pre code { background: transparent; padding: 0; }
+          .pdf-root table { border-collapse: collapse; width: 100%; }
+          .pdf-root th,.pdf-root td { border: 1px solid #e5e7eb; padding: 8px 10px; text-align: left; }
+          .pdf-root img { max-width: 100%; height: auto; }
+        </style>
+        <article class="pdf-root">${renderedHtml}</article>
+      `;
+
+      document.body.appendChild(container);
+
+      try {
+        const { jsPDF } = await import("jspdf");
+        const pdf = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
+        const target = container.querySelector(".pdf-root") as HTMLElement | null;
+        if (!target) throw new Error("PDF target not found");
+
+        await pdf.html(target, {
+          margin: [24, 24, 24, 24],
+          autoPaging: "text",
+          width: 547,
+          windowWidth: 794,
+          html2canvas: {
+            scale: 0.7,
+            useCORS: true,
+            backgroundColor: "#ffffff",
+          },
+        });
+
+        pdf.save(getExportFileName("pdf"));
+      } catch {
+        window.alert("Не удалось экспортировать PDF. Попробуйте снова.");
+      } finally {
+        container.remove();
+        setIsExportingPdf(false);
+      }
     };
-  }, [renderedHtml]);
+
+    void exportPdf();
+  }, [isExportingPdf, renderedHtml]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!isDesktop) return;
@@ -524,9 +575,9 @@ function App() {
                 <Download className="h-4 w-4" />
                 .html
               </Button>
-              <Button variant="outline" size="sm" onClick={handleExportPdf}>
+              <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={isExportingPdf}>
                 <Download className="h-4 w-4" />
-                .pdf
+                {isExportingPdf ? "Генерация PDF..." : ".pdf"}
               </Button>
             </div>
           </CardContent>
