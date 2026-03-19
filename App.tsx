@@ -259,11 +259,8 @@ function App() {
   );
 
   return (
-    <div className="relative min-h-screen bg-background">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_hsl(var(--primary)/0.15),_transparent_55%)]" />
-      <div className="pointer-events-none absolute inset-x-0 top-64 h-72 bg-[radial-gradient(ellipse_at_center,_hsl(var(--accent)/0.25),_transparent_60%)]" />
-
-      <div className="container relative space-y-6 py-6 md:space-y-8 md:py-10">
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto w-full max-w-[1820px] space-y-6 px-4 py-6 md:space-y-8 md:px-6 md:py-10 xl:px-8">
         <Card className="glass-surface overflow-hidden rounded-3xl border-white/20">
           <CardHeader className="space-y-3 p-6 md:p-10">
             <h1 className="text-4xl font-bold tracking-tight text-foreground md:text-5xl">Интерактивный Markdown Редактор</h1>
