@@ -62,6 +62,11 @@ Healthcheck endpoint:
 - Canonical URL.
 - Open Graph + Twitter meta.
 - Schema.org (`WebApplication`) в `index.html`.
+- SEO-страницы:
+  - `/markdown-to-pdf/`
+  - `/markdown-to-html/`
+  - `/markdown-syntax-guide/`
+- FAQ/HowTo schema для SEO-страниц.
 - `robots.txt` и `sitemap.xml` генерируются с корректным доменом при старте контейнера.
 - `site.webmanifest`, favicon и OG image.
 

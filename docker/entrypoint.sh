@@ -24,18 +24,12 @@ fi
 SITE_URL="$(normalize_url "$SITE_URL")"
 export SITE_URL
 
-if [ -f /usr/share/nginx/html/index.html ]; then
-  sed -i "s|__SITE_URL__|$SITE_URL|g" /usr/share/nginx/html/index.html
-fi
+find /usr/share/nginx/html -type f -name "*.template" | while read -r template; do
+  target="${template%.template}"
+  sed "s|__SITE_URL__|$SITE_URL|g" "$template" > "$target"
+  rm -f "$template"
+done
 
-if [ -f /usr/share/nginx/html/sitemap.xml.template ]; then
-  sed "s|__SITE_URL__|$SITE_URL|g" /usr/share/nginx/html/sitemap.xml.template > /usr/share/nginx/html/sitemap.xml
-  rm -f /usr/share/nginx/html/sitemap.xml.template
-fi
-
-if [ -f /usr/share/nginx/html/robots.txt.template ]; then
-  sed "s|__SITE_URL__|$SITE_URL|g" /usr/share/nginx/html/robots.txt.template > /usr/share/nginx/html/robots.txt
-  rm -f /usr/share/nginx/html/robots.txt.template
-fi
+find /usr/share/nginx/html -type f -name "*.html" -exec sed -i "s|__SITE_URL__|$SITE_URL|g" {} +
 
 exec "$@"

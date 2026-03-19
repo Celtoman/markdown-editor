@@ -47,6 +47,7 @@
 - Runtime: `nginx:alpine`.
 - Healthcheck: `/healthz`.
 - SEO-шаблоны `robots.txt` и `sitemap.xml` заполняются доменом на старте контейнера.
+- Дополнительные SEO-страницы расположены в `public/markdown-to-pdf`, `public/markdown-to-html`, `public/markdown-syntax-guide`.
 
 ## Локальная разработка
 

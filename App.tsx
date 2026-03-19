@@ -916,6 +916,28 @@ function App() {
             </Card>
           </section>
 
+          <Card className="glass-surface">
+            <CardContent className="p-4 md:p-5">
+              <h2 className="text-sm font-semibold text-foreground">
+                Полезные материалы
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Руководства и конвертеры для работы с Markdown.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button asChild variant="outline" size="sm">
+                  <a href="/markdown-to-pdf/">Markdown в PDF</a>
+                </Button>
+                <Button asChild variant="outline" size="sm">
+                  <a href="/markdown-to-html/">Markdown в HTML</a>
+                </Button>
+                <Button asChild variant="outline" size="sm">
+                  <a href="/markdown-syntax-guide/">Гайд по синтаксису</a>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           {isDesktop ? (
             <Card className="glass-surface">
               <CardContent className="p-4">
