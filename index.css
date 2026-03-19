@@ -155,6 +155,41 @@
     background-color: hsl(var(--card) / 0.92);
   }
 
+  .hero-accent {
+    position: relative;
+    overflow: hidden;
+    border-color: hsl(var(--primary) / 0.35);
+    box-shadow: 0 10px 24px -18px hsl(var(--primary) / 0.45);
+  }
+
+  .hero-accent::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(120% 120% at 0% 0%, hsl(var(--primary) / 0.2) 0%, transparent 55%),
+      linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--card)) 100%);
+    z-index: 0;
+  }
+
+  .hero-accent::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 3px;
+    background: hsl(var(--primary));
+    opacity: 0.75;
+    z-index: 1;
+  }
+
+  .hero-accent > * {
+    position: relative;
+    z-index: 2;
+  }
+
   .markdown-body {
     @apply text-sm md:text-base leading-7 text-foreground;
   }
