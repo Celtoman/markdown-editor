@@ -73,6 +73,10 @@ function App() {
   });
 
   const editorPreviewContainerRef = useRef<HTMLDivElement>(null);
+  const editorTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const previewScrollRef = useRef<HTMLDivElement>(null);
+  const scrollSyncSourceRef = useRef<"editor" | "preview" | null>(null);
+  const scrollSyncRafRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -231,6 +235,77 @@ function App() {
     return () => window.removeEventListener("keydown", handleEscape);
   }, [isPreviewFullscreen]);
 
+  useEffect(() => {
+    return () => {
+      if (scrollSyncRafRef.current !== null) {
+        cancelAnimationFrame(scrollSyncRafRef.current);
+      }
+    };
+  }, []);
+
+  const syncScrollByRatio = useCallback((source: "editor" | "preview") => {
+    const editor = editorTextareaRef.current;
+    const preview = previewScrollRef.current;
+    if (!editor || !preview) return;
+
+    const sourceElement = source === "editor" ? editor : preview;
+    const targetElement = source === "editor" ? preview : editor;
+
+    const sourceScrollableHeight = sourceElement.scrollHeight - sourceElement.clientHeight;
+    const targetScrollableHeight = targetElement.scrollHeight - targetElement.clientHeight;
+
+    const ratio = sourceScrollableHeight > 0 ? sourceElement.scrollTop / sourceScrollableHeight : 0;
+    const nextScrollTop = ratio * targetScrollableHeight;
+
+    if (Math.abs(targetElement.scrollTop - nextScrollTop) > 1) {
+      targetElement.scrollTop = nextScrollTop;
+    }
+  }, []);
+
+  const handleSyncedScroll = useCallback(
+    (source: "editor" | "preview") => {
+      if (!isDesktop || isPreviewFullscreen) return;
+
+      if (scrollSyncSourceRef.current && scrollSyncSourceRef.current !== source) {
+        return;
+      }
+
+      scrollSyncSourceRef.current = source;
+      syncScrollByRatio(source);
+
+      if (scrollSyncRafRef.current !== null) {
+        cancelAnimationFrame(scrollSyncRafRef.current);
+      }
+      scrollSyncRafRef.current = requestAnimationFrame(() => {
+        scrollSyncSourceRef.current = null;
+      });
+    },
+    [isDesktop, isPreviewFullscreen, syncScrollByRatio],
+  );
+
+  const handleOutlineClick = useCallback(
+    (outlineIndex: number) => {
+      if (!isDesktop && mobileTab === "editor") {
+        setMobileTab("preview");
+      }
+
+      requestAnimationFrame(() => {
+        const preview = previewScrollRef.current;
+        if (!preview) return;
+
+        const headings = preview.querySelectorAll("h1, h2, h3, h4, h5, h6");
+        const targetHeading = headings[outlineIndex] as HTMLElement | undefined;
+        if (!targetHeading) return;
+
+        preview.scrollTo({
+          top: Math.max(0, targetHeading.offsetTop - 12),
+          behavior: "smooth",
+        });
+      });
+    },
+    [isDesktop, mobileTab],
+  );
+
   const previewPanel = (
     <div className="flex h-full min-h-[48vh] flex-col overflow-hidden rounded-2xl border bg-card">
       <div className="flex h-14 items-center justify-between border-b px-4">
@@ -254,7 +329,12 @@ function App() {
           </Button>
         </div>
       </div>
-      <div className="markdown-body scrollbar-modern flex-1 overflow-y-auto px-5 py-4" dangerouslySetInnerHTML={{ __html: renderedHtml }} />
+      <div
+        ref={previewScrollRef}
+        onScroll={() => handleSyncedScroll("preview")}
+        className="markdown-body scrollbar-modern flex-1 overflow-y-auto px-5 py-4"
+        dangerouslySetInnerHTML={{ __html: renderedHtml }}
+      />
     </div>
   );
 
@@ -298,8 +378,10 @@ function App() {
                         </div>
                       </div>
                       <textarea
+                        ref={editorTextareaRef}
                         value={markdown}
                         onChange={(e) => setMarkdown(e.target.value)}
+                        onScroll={() => handleSyncedScroll("editor")}
                         className="scrollbar-modern h-full w-full flex-1 resize-none bg-transparent p-4 font-mono text-sm leading-7 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         placeholder="Пиши Markdown здесь..."
                         aria-label="Markdown Input"
@@ -339,8 +421,10 @@ function App() {
                       </Button>
                     </div>
                     <textarea
+                      ref={editorTextareaRef}
                       value={markdown}
                       onChange={(e) => setMarkdown(e.target.value)}
+                      onScroll={() => handleSyncedScroll("editor")}
                       className="scrollbar-modern h-[52vh] w-full resize-none bg-transparent p-4 font-mono text-sm leading-7 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       placeholder="Пиши Markdown здесь..."
                       aria-label="Markdown Input"
@@ -362,12 +446,17 @@ function App() {
             <CardContent className="space-y-2">
               {outline.length > 0 ? (
                 outline.map((header, index) => (
-                  <div key={`${header.text}-${index}`} className="rounded-lg border bg-background/40 px-3 py-2">
+                  <button
+                    key={`${header.text}-${index}`}
+                    type="button"
+                    onClick={() => handleOutlineClick(index)}
+                    className="w-full rounded-lg border bg-background/40 px-3 py-2 text-left transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
                     <div className="flex items-center gap-2" style={{ paddingLeft: `${(header.level - 1) * 0.8}rem` }}>
                       <Badge variant="outline">H{header.level}</Badge>
                       <span className="truncate text-sm text-foreground/90">{header.text}</span>
                     </div>
-                  </div>
+                  </button>
                 ))
               ) : (
                 <p className="text-sm italic text-muted-foreground">Заголовки в документе не найдены.</p>
