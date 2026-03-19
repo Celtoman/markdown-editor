@@ -609,30 +609,29 @@ function App() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto w-full max-w-[1820px] space-y-6 px-4 py-6 md:space-y-8 md:px-6 md:py-10 xl:px-8">
-        <div className="flex justify-end">
-          <Card className="glass-surface w-fit">
-            <CardContent className="p-2">
-              <Tabs value={themeMode} onValueChange={(value) => setThemeMode(value as ThemeMode)}>
-                <TabsList className="h-9">
-                  <TabsTrigger value="light" className="h-7 w-8 p-0" aria-label="Светлая тема" title="Светлая тема">
-                    <Sun className="h-4 w-4" />
-                    <span className="sr-only">Светлая</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="dark" className="h-7 w-8 p-0" aria-label="Тёмная тема" title="Тёмная тема">
-                    <Moon className="h-4 w-4" />
-                    <span className="sr-only">Тёмная</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="system" className="h-7 w-8 p-0" aria-label="Системная тема" title="Системная тема">
-                    <Monitor className="h-4 w-4" />
-                    <span className="sr-only">Системная</span>
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </CardContent>
-          </Card>
-        </div>
-
         <Card className="hero-accent glass-surface overflow-hidden rounded-3xl border-white/20">
+          <div className="absolute right-4 top-4 z-20 md:right-6 md:top-6">
+            <Card className="glass-surface w-fit">
+              <CardContent className="p-2">
+                <Tabs value={themeMode} onValueChange={(value) => setThemeMode(value as ThemeMode)}>
+                  <TabsList className="h-9">
+                    <TabsTrigger value="light" className="h-7 w-8 p-0" aria-label="Светлая тема" title="Светлая тема">
+                      <Sun className="h-4 w-4" />
+                      <span className="sr-only">Светлая</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="dark" className="h-7 w-8 p-0" aria-label="Тёмная тема" title="Тёмная тема">
+                      <Moon className="h-4 w-4" />
+                      <span className="sr-only">Тёмная</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="system" className="h-7 w-8 p-0" aria-label="Системная тема" title="Системная тема">
+                      <Monitor className="h-4 w-4" />
+                      <span className="sr-only">Системная</span>
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </div>
           <CardContent className="p-6 md:p-10">
             <div className="space-y-4">
               <h1 className="text-4xl font-bold tracking-tight text-foreground md:text-5xl">Интерактивный Markdown Редактор</h1>
