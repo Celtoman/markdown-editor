@@ -26,7 +26,6 @@ import {
   Monitor,
   Moon,
   Minimize,
-  Sparkles,
   Sun,
   Trash2,
   Type,
@@ -570,7 +569,7 @@ function App() {
 
   const showEditorPanel = !isPreviewFullscreen && workspaceMode !== "preview";
   const showPreviewPanel = workspaceMode !== "focus";
-  const showStats = workspaceMode !== "focus";
+  const showStats = true;
   const showOutline = !isPreviewFullscreen && workspaceMode !== "focus";
 
   const previewPanel = (
@@ -597,21 +596,6 @@ function App() {
             </Button>
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Badge variant="outline">Экспорт</Badge>
-          <Button variant="outline" size="sm" onClick={handleExportMarkdown}>
-            <FileText className="h-4 w-4" />
-            .md
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleExportHtml}>
-            <Download className="h-4 w-4" />
-            .html
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={isExportingPdf}>
-            <Download className="h-4 w-4" />
-            {isExportingPdf ? "Генерация PDF..." : ".pdf"}
-          </Button>
-        </div>
       </div>
       <div
         ref={previewScrollRef}
@@ -628,10 +612,6 @@ function App() {
         <Card className="hero-accent glass-surface overflow-hidden rounded-3xl border-white/20">
           <CardContent className="grid gap-6 p-6 md:grid-cols-[1.45fr_1fr] md:items-start md:gap-10 md:p-10">
             <div className="space-y-4">
-              <Badge className="w-fit gap-2 bg-primary/10 text-primary hover:bg-primary/10">
-                <Sparkles className="h-3.5 w-3.5" />
-                Онлайн-редактор Markdown
-              </Badge>
               <h1 className="text-4xl font-bold tracking-tight text-foreground md:text-5xl">Интерактивный Markdown Редактор</h1>
               <CardDescription className="max-w-3xl text-base leading-relaxed md:text-lg">
                 Простой и современный инструмент для написания и предпросмотра Markdown в реальном времени. Просто печатайте в левой панели и мгновенно увидите результат справа.
@@ -639,31 +619,23 @@ function App() {
             </div>
 
             <div className="rounded-2xl border bg-background/70 p-4 shadow-sm backdrop-blur-sm md:p-5">
-              <h2 className="text-sm font-semibold text-foreground">Быстрый старт</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Пишите, проверяйте структуру и сразу экспортируйте итоговый документ.</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Badge variant="secondary">Живой предпросмотр</Badge>
-                <Badge variant="secondary">Синхронный скролл</Badge>
-                <Badge variant="secondary">Экспорт .md / .html / .pdf</Badge>
-              </div>
-
-              <div className="mt-4 space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Тема интерфейса</p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button variant={themeMode === "light" ? "default" : "outline"} size="sm" onClick={() => setThemeMode("light")}>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Тема интерфейса</p>
+              <Tabs value={themeMode} onValueChange={(value) => setThemeMode(value as ThemeMode)} className="mt-3 w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="light">
                     <Sun className="h-4 w-4" />
                     Светлая
-                  </Button>
-                  <Button variant={themeMode === "dark" ? "default" : "outline"} size="sm" onClick={() => setThemeMode("dark")}>
+                  </TabsTrigger>
+                  <TabsTrigger value="dark">
                     <Moon className="h-4 w-4" />
                     Тёмная
-                  </Button>
-                  <Button variant={themeMode === "system" ? "default" : "outline"} size="sm" onClick={() => setThemeMode("system")}>
+                  </TabsTrigger>
+                  <TabsTrigger value="system">
                     <Monitor className="h-4 w-4" />
                     Системная
-                  </Button>
-                </div>
-              </div>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
           </CardContent>
         </Card>
@@ -704,25 +676,47 @@ function App() {
           </Card>
         )}
 
-        <Card className="glass-surface">
-          <CardContent className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline">Режим редактора</Badge>
-              <Button variant={workspaceMode === "split" ? "default" : "outline"} size="sm" onClick={() => setWorkspaceMode("split")}>
-                <Columns2 className="h-4 w-4" />
-                Разделение
-              </Button>
-              <Button variant={workspaceMode === "preview" ? "default" : "outline"} size="sm" onClick={() => setWorkspaceMode("preview")}>
-                <Eye className="h-4 w-4" />
-                Только превью
-              </Button>
-              <Button variant={workspaceMode === "focus" ? "default" : "outline"} size="sm" onClick={() => setWorkspaceMode("focus")}>
-                <Focus className="h-4 w-4" />
-                Фокус
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <section className="grid gap-4 md:grid-cols-2">
+          <Card className="glass-surface">
+            <CardContent className="p-4">
+              <h2 className="text-sm font-semibold text-foreground">Режим редактора</h2>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Button variant={workspaceMode === "split" ? "default" : "outline"} size="sm" onClick={() => setWorkspaceMode("split")}>
+                  <Columns2 className="h-4 w-4" />
+                  Разделение
+                </Button>
+                <Button variant={workspaceMode === "preview" ? "default" : "outline"} size="sm" onClick={() => setWorkspaceMode("preview")}>
+                  <Eye className="h-4 w-4" />
+                  Только превью
+                </Button>
+                <Button variant={workspaceMode === "focus" ? "default" : "outline"} size="sm" onClick={() => setWorkspaceMode("focus")}>
+                  <Focus className="h-4 w-4" />
+                  Фокус
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-surface">
+            <CardContent className="p-4">
+              <h2 className="text-sm font-semibold text-foreground">Экспорт</h2>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleExportMarkdown}>
+                  <FileText className="h-4 w-4" />
+                  .md
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleExportHtml}>
+                  <Download className="h-4 w-4" />
+                  .html
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={isExportingPdf}>
+                  <Download className="h-4 w-4" />
+                  {isExportingPdf ? "Генерация PDF..." : ".pdf"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
 
         {isDesktop ? (
           <Card className="glass-surface">
