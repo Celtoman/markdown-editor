@@ -5,46 +5,46 @@
 @layer base {
   :root {
     --background: 140 18% 97%;
-    --foreground: 155 20% 14%;
+    --foreground: 155 26% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 155 20% 14%;
+    --card-foreground: 155 26% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 155 20% 14%;
+    --popover-foreground: 155 26% 12%;
     --primary: 146 56% 35%;
     --primary-foreground: 0 0% 100%;
     --secondary: 145 18% 92%;
-    --secondary-foreground: 155 24% 18%;
+    --secondary-foreground: 155 28% 15%;
     --muted: 145 16% 91%;
-    --muted-foreground: 155 10% 38%;
-    --accent: 146 45% 87%;
+    --muted-foreground: 155 12% 30%;
+    --accent: 146 42% 84%;
     --accent-foreground: 146 58% 24%;
     --destructive: 0 74% 54%;
     --destructive-foreground: 0 0% 100%;
-    --border: 145 14% 84%;
-    --input: 145 14% 84%;
+    --border: 145 14% 78%;
+    --input: 145 14% 78%;
     --ring: 146 56% 35%;
     --radius: 1rem;
   }
 
   .dark {
     --background: 156 18% 9%;
-    --foreground: 140 22% 92%;
-    --card: 156 16% 12%;
-    --card-foreground: 140 22% 92%;
-    --popover: 156 16% 12%;
-    --popover-foreground: 140 22% 92%;
+    --foreground: 140 24% 95%;
+    --card: 156 15% 13%;
+    --card-foreground: 140 24% 95%;
+    --popover: 156 15% 13%;
+    --popover-foreground: 140 24% 95%;
     --primary: 146 52% 48%;
     --primary-foreground: 156 24% 10%;
     --secondary: 156 13% 19%;
-    --secondary-foreground: 140 22% 92%;
+    --secondary-foreground: 140 24% 95%;
     --muted: 156 11% 17%;
-    --muted-foreground: 140 12% 68%;
+    --muted-foreground: 140 15% 74%;
     --accent: 146 26% 22%;
     --accent-foreground: 146 48% 78%;
     --destructive: 0 62% 43%;
     --destructive-foreground: 0 0% 100%;
-    --border: 156 10% 23%;
-    --input: 156 10% 23%;
+    --border: 156 12% 30%;
+    --input: 156 12% 30%;
     --ring: 146 52% 48%;
   }
 
@@ -60,7 +60,8 @@
 
 @layer components {
   .glass-surface {
-    @apply bg-card/85 backdrop-blur-xl border border-white/10 shadow-sm;
+    @apply bg-card backdrop-blur-xl border border-border shadow-sm;
+    background-color: hsl(var(--card) / 0.92);
   }
 
   .markdown-body {
@@ -106,7 +107,7 @@
   }
 
   .markdown-body blockquote {
-    @apply border-l-4 border-primary/30 pl-4 italic text-muted-foreground mb-4;
+    @apply border-l-4 border-primary/45 pl-4 italic text-muted-foreground mb-4;
   }
 
   .markdown-body a {
