@@ -342,6 +342,16 @@ function App() {
           .pdf-root thead { background: #f8fafc; }
           .pdf-root th,.pdf-root td { border: 1px solid #e5e7eb; padding: 8px 10px; text-align: left; }
           .pdf-root img { max-width: 100%; height: auto; }
+          .pdf-root h1,.pdf-root h2,.pdf-root h3,.pdf-root h4,.pdf-root h5,.pdf-root h6,
+          .pdf-root p,.pdf-root blockquote,.pdf-root pre,.pdf-root table,
+          .pdf-root ul,.pdf-root ol,.pdf-root li,.pdf-root img,.pdf-root hr {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+          .pdf-root p {
+            orphans: 3;
+            widows: 3;
+          }
         </style>
         <article class="pdf-root">${renderedHtml}</article>
       `;
@@ -349,127 +359,42 @@ function App() {
       document.body.appendChild(container);
 
       try {
-        const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
+        const html2PdfModule = await import("html2pdf.js");
+        const html2pdf = (html2PdfModule.default ?? html2PdfModule) as {
+          (): {
+            set: (options: Record<string, unknown>) => {
+              from: (element: HTMLElement) => { save: () => Promise<void> };
+            };
+          };
+        };
+
         const target = container.querySelector(".pdf-root") as HTMLElement | null;
         if (!target) throw new Error("PDF target not found");
 
-        const sourceCanvas = await html2canvas(target, {
-          scale: Math.min(window.devicePixelRatio || 1, 2),
-          useCORS: true,
-          backgroundColor: "#ffffff",
-          logging: false,
-        });
-        const sourceContext = sourceCanvas.getContext("2d", { willReadFrequently: true });
-
-        const pdf = new jsPDF({ orientation: "p", unit: "pt", format: "a4", compress: true });
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const margin = 24;
-        const printableWidth = pageWidth - margin * 2;
-        const printableHeight = pageHeight - margin * 2;
-        const scale = printableWidth / sourceCanvas.width;
-        const pageHeightPx = printableHeight / scale;
-        const canvasScaleY = sourceCanvas.height / Math.max(target.scrollHeight, 1);
-        const blockBoundariesPx = Array.from(
-          target.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6,p,li,blockquote,pre,table,hr,img"),
-        )
-          .map((element) => Math.floor((element.offsetTop + element.offsetHeight) * canvasScaleY))
-          .filter((value) => value > 0 && value < sourceCanvas.height)
-          .sort((a, b) => a - b);
-
-        const isMostlyWhitespaceRow = (y: number) => {
-          if (!sourceContext) return false;
-          const clampedY = Math.max(0, Math.min(sourceCanvas.height - 1, Math.floor(y)));
-          const rowPixels = sourceContext.getImageData(0, clampedY, sourceCanvas.width, 1).data;
-          const sampleCount = 48;
-          let darkSamples = 0;
-
-          for (let i = 0; i < sampleCount; i += 1) {
-            const x = Math.floor((i / (sampleCount - 1)) * (sourceCanvas.width - 1));
-            const pixelIndex = x * 4;
-            const alpha = rowPixels[pixelIndex + 3];
-            if (alpha < 16) continue;
-            const r = rowPixels[pixelIndex];
-            const g = rowPixels[pixelIndex + 1];
-            const b = rowPixels[pixelIndex + 2];
-            if (r < 245 || g < 245 || b < 245) {
-              darkSamples += 1;
-              if (darkSamples > 2) return false;
-            }
-          }
-
-          return true;
+        const options = {
+          margin: [16, 16, 16, 16],
+          filename: getExportFileName("pdf"),
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: {
+            scale: Math.min((window.devicePixelRatio || 1) * 1.5, 3),
+            useCORS: true,
+            backgroundColor: "#ffffff",
+            logging: false,
+            letterRendering: true,
+          },
+          jsPDF: {
+            unit: "pt",
+            format: "a4",
+            orientation: "portrait",
+            compress: true,
+          },
+          pagebreak: {
+            mode: ["css", "legacy", "avoid-all"],
+            avoid: ["h1", "h2", "h3", "h4", "h5", "h6", "p", "blockquote", "pre", "table", "ul", "ol", "li", "img", "hr"],
+          },
         };
 
-        const findStrictPageBreak = (startY: number, preferredEndY: number) => {
-          const searchRange = 140;
-          const minEndY = Math.floor(startY + pageHeightPx * 0.35);
-          const maxEndY = Math.min(sourceCanvas.height, Math.floor(startY + pageHeightPx * 1.35));
-          const low = Math.max(minEndY, preferredEndY - searchRange);
-          const high = Math.min(maxEndY, preferredEndY + searchRange);
-          const minDistanceFromTop = Math.max(startY + 24, minEndY);
-
-          const blockCandidates = blockBoundariesPx.filter((candidateY) => candidateY >= minDistanceFromTop && candidateY <= maxEndY);
-          if (blockCandidates.length > 0) {
-            const beforePreferred = blockCandidates.filter((candidateY) => candidateY <= preferredEndY);
-            if (beforePreferred.length > 0) {
-              return beforePreferred[beforePreferred.length - 1];
-            }
-
-            return blockCandidates[0];
-          }
-
-          for (let offset = 0; offset <= searchRange; offset += 1) {
-            const upCandidate = preferredEndY - offset;
-            if (upCandidate >= low && upCandidate <= high && isMostlyWhitespaceRow(upCandidate)) {
-              return upCandidate;
-            }
-
-            const downCandidate = preferredEndY + offset;
-            if (downCandidate >= low && downCandidate <= high && isMostlyWhitespaceRow(downCandidate)) {
-              return downCandidate;
-            }
-          }
-
-          return Math.max(minEndY, Math.min(preferredEndY, maxEndY));
-        };
-
-        let renderedHeightPx = 0;
-        let pageIndex = 0;
-
-        while (renderedHeightPx < sourceCanvas.height) {
-          const preferredBottom = Math.min(sourceCanvas.height, Math.floor(renderedHeightPx + pageHeightPx));
-          const isLastPage = preferredBottom >= sourceCanvas.height;
-          const computedBreak = isLastPage ? sourceCanvas.height : findStrictPageBreak(renderedHeightPx, preferredBottom);
-          const pageBreakBottom =
-            computedBreak > renderedHeightPx
-              ? computedBreak
-              : Math.min(sourceCanvas.height, renderedHeightPx + Math.max(1, Math.floor(pageHeightPx)));
-          const sliceHeightPx = Math.max(1, pageBreakBottom - renderedHeightPx);
-
-          const sliceCanvas = document.createElement("canvas");
-          sliceCanvas.width = sourceCanvas.width;
-          sliceCanvas.height = sliceHeightPx;
-          const sliceContext = sliceCanvas.getContext("2d");
-          if (!sliceContext) throw new Error("PDF slice context not found");
-
-          sliceContext.fillStyle = "#ffffff";
-          sliceContext.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-          sliceContext.drawImage(sourceCanvas, 0, renderedHeightPx, sourceCanvas.width, sliceHeightPx, 0, 0, sourceCanvas.width, sliceHeightPx);
-
-          const imageData = sliceCanvas.toDataURL("image/png");
-          if (pageIndex > 0) {
-            pdf.addPage();
-          }
-
-          const renderedHeightPt = sliceHeightPx * scale;
-          pdf.addImage(imageData, "PNG", margin, margin, printableWidth, renderedHeightPt, undefined, "FAST");
-
-          renderedHeightPx += sliceHeightPx;
-          pageIndex += 1;
-        }
-
-        pdf.save(getExportFileName("pdf"));
+        await html2pdf().set(options).from(target).save();
       } catch {
         window.alert("Не удалось экспортировать PDF. Попробуйте снова.");
       } finally {
