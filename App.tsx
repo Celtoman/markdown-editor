@@ -8,8 +8,6 @@ import {
   FileCode2,
   Heading,
   Minimize,
-  RefreshCcw,
-  Sparkles,
   Trash2,
   Type,
 } from "lucide-react";
@@ -22,26 +20,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const STORAGE_KEY = "interactive-markdown-editor-content-v2";
 
-const initialMarkdown = `# Добро пожаловать в новый Markdown Editor
+const initialMarkdown = `# Добро пожаловать в Markdown Редактор!
 
-Это современный редактор с живым предпросмотром и аккуратной типографикой.
+Это живой предпросмотр вашего Markdown текста.
 
-## Что уже умеет
+## Основные возможности
 
-- Поддержка **GFM**
-- Безопасный рендер HTML (sanitized)
-- Мобильный режим с переключением *Редактор / Превью*
-- Статистика текста и структура документа
+- **Жирный текст** и *курсив*.
+- Списки:
+  1. Нумерованные списки
+  2. С несколькими элементами
+- \`встроенный код\` для коротких фрагментов.
 
-### Код-блоки
+### Блоки кода
 
-\`\`\`ts
-function greet(name: string) {
-  return \`Привет, \${name}!\`;
+\`\`\`javascript
+function greet(name) {
+  console.log("Привет, " + name + "!");
 }
+greet("Мир");
 \`\`\`
 
-> Пиши Markdown слева и сразу проверяй визуальный результат справа.
+> Цитаты отлично подходят для выделения важной информации.
 `;
 
 type MobileTab = "editor" | "preview";
@@ -264,33 +264,11 @@ function App() {
 
       <div className="container relative space-y-6 py-6 md:space-y-8 md:py-10">
         <Card className="glass-surface overflow-hidden rounded-3xl border-white/20">
-          <CardHeader className="space-y-4 p-6 md:p-10">
-            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              Обновлённый интерфейс
-            </div>
-            <div>
-              <CardTitle className="text-3xl md:text-5xl">Интерактивный Markdown Редактор</CardTitle>
-              <CardDescription className="mt-3 max-w-3xl text-base leading-relaxed md:text-lg">
-                Современный рабочий стол для Markdown: чистый визуал, адаптивный режим, безопасный рендер и мгновенный предпросмотр.
-              </CardDescription>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary">shadcn/ui style</Badge>
-              <Badge variant="secondary">Tailwind CSS</Badge>
-              <Badge variant="secondary">XSS-safe preview</Badge>
-              <Badge variant="secondary">Mobile tabs</Badge>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="secondary" size="sm" onClick={() => setMarkdown(initialMarkdown)}>
-                <RefreshCcw className="h-4 w-4" />
-                Сбросить пример
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setMarkdown("")}>
-                <Trash2 className="h-4 w-4" />
-                Очистить
-              </Button>
-            </div>
+          <CardHeader className="space-y-3 p-6 md:p-10">
+            <h1 className="text-4xl font-bold tracking-tight text-foreground md:text-5xl">Интерактивный Markdown Редактор</h1>
+            <CardDescription className="max-w-3xl text-base leading-relaxed md:text-lg">
+              Простой и современный инструмент для написания и предпросмотра Markdown в реальном времени. Просто печатайте в левой панели и мгновенно увидите результат справа.
+            </CardDescription>
           </CardHeader>
         </Card>
 
@@ -313,7 +291,13 @@ function App() {
                     >
                       <div className="flex items-center justify-between border-b px-4 py-3">
                         <h2 className="text-sm font-semibold">Markdown</h2>
-                        <Badge variant="outline">{stats.words} слов</Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{stats.words} слов</Badge>
+                          <Button variant="outline" size="sm" onClick={() => setMarkdown("")}>
+                            <Trash2 className="h-4 w-4" />
+                            Очистить
+                          </Button>
+                        </div>
                       </div>
                       <textarea
                         value={markdown}
@@ -351,7 +335,10 @@ function App() {
                   <div className="overflow-hidden rounded-2xl border bg-card">
                     <div className="flex items-center justify-between border-b px-4 py-3">
                       <h2 className="text-sm font-semibold">Markdown</h2>
-                      <Badge variant="outline">autosave</Badge>
+                      <Button variant="outline" size="sm" onClick={() => setMarkdown("")}>
+                        <Trash2 className="h-4 w-4" />
+                        Очистить
+                      </Button>
                     </div>
                     <textarea
                       value={markdown}
@@ -398,4 +385,3 @@ function App() {
 }
 
 export default App;
-
