@@ -369,6 +369,13 @@ function App() {
         const printableHeight = pageHeight - margin * 2;
         const scale = printableWidth / sourceCanvas.width;
         const pageHeightPx = printableHeight / scale;
+        const canvasScaleY = sourceCanvas.height / Math.max(target.scrollHeight, 1);
+        const blockBoundariesPx = Array.from(
+          target.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6,p,li,blockquote,pre,table,hr,img"),
+        )
+          .map((element) => Math.floor((element.offsetTop + element.offsetHeight) * canvasScaleY))
+          .filter((value) => value > 0 && value < sourceCanvas.height)
+          .sort((a, b) => a - b);
 
         const isMostlyWhitespaceRow = (y: number) => {
           if (!sourceContext) return false;
@@ -400,6 +407,14 @@ function App() {
           const maxEndY = Math.min(sourceCanvas.height, Math.floor(startY + pageHeightPx * 1.1));
           const low = Math.max(minEndY, preferredEndY - searchRange);
           const high = Math.min(maxEndY, preferredEndY + searchRange);
+          const minDistanceFromTop = Math.max(startY + 24, minEndY);
+
+          const blockCandidates = blockBoundariesPx.filter((candidateY) => candidateY >= minDistanceFromTop && candidateY <= high);
+          if (blockCandidates.length > 0) {
+            return blockCandidates.reduce((best, current) =>
+              Math.abs(current - preferredEndY) < Math.abs(best - preferredEndY) ? current : best,
+            );
+          }
 
           for (let offset = 0; offset <= searchRange; offset += 1) {
             const upCandidate = preferredEndY - offset;
