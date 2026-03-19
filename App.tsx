@@ -320,16 +320,26 @@ function App() {
 
       container.innerHTML = `
         <style>
-          .pdf-root { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; line-height: 1.65; max-width: 960px; margin: 0 auto; padding: 32px 20px; color: #1f2937; }
-          .pdf-root h1,.pdf-root h2,.pdf-root h3,.pdf-root h4,.pdf-root h5,.pdf-root h6 { line-height: 1.25; margin: 1.2em 0 .5em; }
+          .pdf-root { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; line-height: 1.65; max-width: 960px; margin: 0 auto; padding: 32px 20px; color: #1f2937; }
+          .pdf-root h1,.pdf-root h2,.pdf-root h3,.pdf-root h4,.pdf-root h5,.pdf-root h6 { line-height: 1.25; margin: 1.2em 0 .5em; font-weight: 700; }
+          .pdf-root h1 { font-size: 2rem; font-weight: 800; }
+          .pdf-root h2 { font-size: 1.6rem; }
+          .pdf-root h3 { font-size: 1.35rem; }
+          .pdf-root h4 { font-size: 1.15rem; }
+          .pdf-root h5 { font-size: 1rem; }
+          .pdf-root h6 { font-size: 0.92rem; }
           .pdf-root h1,.pdf-root h2 { border-bottom: 1px solid #e5e7eb; padding-bottom: .3em; }
-          .pdf-root p,.pdf-root ul,.pdf-root ol,.pdf-root blockquote,.pdf-root pre,.pdf-root table { margin: 0 0 1em; }
+          .pdf-root p,.pdf-root ul,.pdf-root ol,.pdf-root blockquote,.pdf-root pre,.pdf-root table { margin: 0 0 1em; font-size: 1rem; }
           .pdf-root ul,.pdf-root ol { padding-left: 1.4em; }
+          .pdf-root li + li { margin-top: .25em; }
+          .pdf-root strong { font-weight: 700; }
+          .pdf-root em { font-style: italic; }
           .pdf-root blockquote { border-left: 4px solid #d1d5db; margin-left: 0; padding-left: 1em; color: #6b7280; font-style: italic; }
           .pdf-root code { background: #f3f4f6; border-radius: 6px; padding: .12em .4em; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
           .pdf-root pre { background: #f3f4f6; border-radius: 12px; padding: 14px; overflow: hidden; white-space: pre-wrap; word-break: break-word; }
-          .pdf-root pre code { background: transparent; padding: 0; }
+          .pdf-root pre code { background: transparent; padding: 0; font-size: .92em; line-height: 1.5; }
           .pdf-root table { border-collapse: collapse; width: 100%; }
+          .pdf-root thead { background: #f8fafc; }
           .pdf-root th,.pdf-root td { border: 1px solid #e5e7eb; padding: 8px 10px; text-align: left; }
           .pdf-root img { max-width: 100%; height: auto; }
         </style>
@@ -349,6 +359,7 @@ function App() {
           backgroundColor: "#ffffff",
           logging: false,
         });
+        const sourceContext = sourceCanvas.getContext("2d", { willReadFrequently: true });
 
         const pdf = new jsPDF({ orientation: "p", unit: "pt", format: "a4", compress: true });
         const pageWidth = pdf.internal.pageSize.getWidth();
@@ -359,12 +370,60 @@ function App() {
         const scale = printableWidth / sourceCanvas.width;
         const pageHeightPx = printableHeight / scale;
 
+        const isMostlyWhitespaceRow = (y: number) => {
+          if (!sourceContext) return false;
+          const clampedY = Math.max(0, Math.min(sourceCanvas.height - 1, Math.floor(y)));
+          const rowPixels = sourceContext.getImageData(0, clampedY, sourceCanvas.width, 1).data;
+          const sampleCount = 48;
+          let darkSamples = 0;
+
+          for (let i = 0; i < sampleCount; i += 1) {
+            const x = Math.floor((i / (sampleCount - 1)) * (sourceCanvas.width - 1));
+            const pixelIndex = x * 4;
+            const alpha = rowPixels[pixelIndex + 3];
+            if (alpha < 16) continue;
+            const r = rowPixels[pixelIndex];
+            const g = rowPixels[pixelIndex + 1];
+            const b = rowPixels[pixelIndex + 2];
+            if (r < 245 || g < 245 || b < 245) {
+              darkSamples += 1;
+              if (darkSamples > 2) return false;
+            }
+          }
+
+          return true;
+        };
+
+        const findSoftPageBreak = (startY: number, preferredEndY: number) => {
+          const searchRange = 140;
+          const minEndY = Math.floor(startY + pageHeightPx * 0.6);
+          const maxEndY = Math.min(sourceCanvas.height, Math.floor(startY + pageHeightPx * 1.1));
+          const low = Math.max(minEndY, preferredEndY - searchRange);
+          const high = Math.min(maxEndY, preferredEndY + searchRange);
+
+          for (let offset = 0; offset <= searchRange; offset += 1) {
+            const upCandidate = preferredEndY - offset;
+            if (upCandidate >= low && upCandidate <= high && isMostlyWhitespaceRow(upCandidate)) {
+              return upCandidate;
+            }
+
+            const downCandidate = preferredEndY + offset;
+            if (downCandidate >= low && downCandidate <= high && isMostlyWhitespaceRow(downCandidate)) {
+              return downCandidate;
+            }
+          }
+
+          return Math.max(minEndY, Math.min(preferredEndY, maxEndY));
+        };
+
         let renderedHeightPx = 0;
         let pageIndex = 0;
 
         while (renderedHeightPx < sourceCanvas.height) {
-          const remainingPx = sourceCanvas.height - renderedHeightPx;
-          const sliceHeightPx = Math.max(1, Math.floor(Math.min(pageHeightPx, remainingPx)));
+          const preferredBottom = Math.min(sourceCanvas.height, Math.floor(renderedHeightPx + pageHeightPx));
+          const isLastPage = preferredBottom >= sourceCanvas.height;
+          const pageBreakBottom = isLastPage ? sourceCanvas.height : findSoftPageBreak(renderedHeightPx, preferredBottom);
+          const sliceHeightPx = Math.max(1, pageBreakBottom - renderedHeightPx);
 
           const sliceCanvas = document.createElement("canvas");
           sliceCanvas.width = sourceCanvas.width;
