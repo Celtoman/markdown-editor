@@ -1,0 +1,21 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#f9f7f3"/>
+  <rect x="46" y="46" width="1108" height="538" rx="28" fill="#fff" stroke="#d8d2c6" stroke-width="2"/>
+  <rect x="86" y="108" width="486" height="420" rx="20" fill="#faf8f3" stroke="#e4ddd2"/>
+  <rect x="626" y="108" width="486" height="420" rx="20" fill="#faf8f3" stroke="#e4ddd2"/>
+  <rect x="86" y="108" width="486" height="62" rx="20" fill="#fff" stroke="#e4ddd2"/>
+  <rect x="626" y="108" width="486" height="62" rx="20" fill="#fff" stroke="#e4ddd2"/>
+  <text x="120" y="148" fill="#3f3a30" font-family="Arial, sans-serif" font-weight="700" font-size="24">Редактор Markdown</text>
+  <text x="662" y="148" fill="#3f3a30" font-family="Arial, sans-serif" font-weight="700" font-size="24">Предпросмотр</text>
+  <text x="120" y="238" fill="#3f3a30" font-family="Arial, sans-serif" font-weight="700" font-size="44"># Заголовок</text>
+  <text x="120" y="296" fill="#6b6457" font-family="Arial, sans-serif" font-size="26">Пиши Markdown и сразу смотри результат.</text>
+  <text x="120" y="348" fill="#6b6457" font-family="Arial, sans-serif" font-size="26">Экспорт в PDF, HTML и MD.</text>
+  <text x="120" y="400" fill="#6b6457" font-family="Arial, sans-serif" font-size="26">Светлая, темная и системная тема.</text>
+  <rect x="662" y="214" width="412" height="12" rx="6" fill="#e8e2d6"/>
+  <rect x="662" y="248" width="372" height="12" rx="6" fill="#ece6db"/>
+  <rect x="662" y="282" width="338" height="12" rx="6" fill="#ece6db"/>
+  <rect x="662" y="332" width="412" height="12" rx="6" fill="#e8e2d6"/>
+  <rect x="662" y="366" width="298" height="12" rx="6" fill="#ece6db"/>
+  <rect x="662" y="416" width="412" height="70" rx="14" fill="#f3efe7" stroke="#ddd4c7"/>
+  <text x="86" y="72" fill="#c96c45" font-family="Arial, sans-serif" font-size="22" font-weight="700">Interactive Markdown Editor</text>
+</svg>

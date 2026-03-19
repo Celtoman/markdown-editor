@@ -1,0 +1,16 @@
+{
+  "name": "Interactive Markdown Editor",
+  "short_name": "Markdown Editor",
+  "description": "Онлайн редактор Markdown с предпросмотром и экспортом",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f9f7f3",
+  "theme_color": "#c96c45",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

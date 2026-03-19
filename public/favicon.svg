@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Markdown Editor">
+  <rect width="128" height="128" rx="24" fill="#f9f7f3" />
+  <path d="M24 34h80a8 8 0 0 1 8 8v44a8 8 0 0 1-8 8H24a8 8 0 0 1-8-8V42a8 8 0 0 1 8-8Z" fill="#c96c45" />
+  <path d="M34 74V54h8l10 12 10-12h8v20h-8V66l-10 12-10-12v8h-8Zm42-8h6l-5-5 5-5h-6l-5 5 5 5Zm10 0h6l5-5-5-5h-6l5 5-5 5Z" fill="#fff" />
+</svg>
