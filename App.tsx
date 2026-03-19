@@ -87,7 +87,7 @@ if (!(globalThis as Record<string, unknown>)[MARKED_CONFIGURED_FLAG]) {
   (globalThis as Record<string, unknown>)[MARKED_CONFIGURED_FLAG] = true;
 }
 
-const initialMarkdown = `# Добро пожаловать в Markdown Редактор!
+const initialMarkdown = `## Добро пожаловать в Markdown Редактор!
 
 Это живой предпросмотр вашего Markdown текста.
 
