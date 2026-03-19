@@ -126,6 +126,53 @@
     @apply bg-transparent p-0;
   }
 
+  .markdown-body pre code.hljs {
+    @apply block overflow-x-auto rounded-none bg-transparent p-0 text-[0.92em] leading-6;
+    color: hsl(var(--foreground) / 0.94);
+  }
+
+  .markdown-body .hljs-comment,
+  .markdown-body .hljs-quote {
+    color: hsl(var(--muted-foreground) / 0.85);
+    font-style: italic;
+  }
+
+  .markdown-body .hljs-keyword,
+  .markdown-body .hljs-selector-tag,
+  .markdown-body .hljs-title.function_,
+  .markdown-body .hljs-section {
+    color: hsl(var(--primary));
+    font-weight: 600;
+  }
+
+  .markdown-body .hljs-string,
+  .markdown-body .hljs-title.class_,
+  .markdown-body .hljs-template-string,
+  .markdown-body .hljs-attribute {
+    color: hsl(162 64% 30%);
+  }
+
+  .dark .markdown-body .hljs-string,
+  .dark .markdown-body .hljs-title.class_,
+  .dark .markdown-body .hljs-template-string,
+  .dark .markdown-body .hljs-attribute {
+    color: hsl(154 48% 67%);
+  }
+
+  .markdown-body .hljs-number,
+  .markdown-body .hljs-literal,
+  .markdown-body .hljs-symbol,
+  .markdown-body .hljs-variable {
+    color: hsl(221 58% 45%);
+  }
+
+  .dark .markdown-body .hljs-number,
+  .dark .markdown-body .hljs-literal,
+  .dark .markdown-body .hljs-symbol,
+  .dark .markdown-body .hljs-variable {
+    color: hsl(217 65% 70%);
+  }
+
   .markdown-body table {
     @apply w-full border-collapse mb-4;
   }

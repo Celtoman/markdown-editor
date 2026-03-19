@@ -1,11 +1,28 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
+import hljs from "highlight.js/lib/core";
+import bash from "highlight.js/lib/languages/bash";
+import css from "highlight.js/lib/languages/css";
+import javascript from "highlight.js/lib/languages/javascript";
+import json from "highlight.js/lib/languages/json";
+import markdownLang from "highlight.js/lib/languages/markdown";
+import plaintext from "highlight.js/lib/languages/plaintext";
+import python from "highlight.js/lib/languages/python";
+import sql from "highlight.js/lib/languages/sql";
+import typescript from "highlight.js/lib/languages/typescript";
+import xml from "highlight.js/lib/languages/xml";
+import { markedHighlight } from "marked-highlight";
 import {
+  Columns2,
   ClipboardCheck,
   Copy,
+  Download,
+  Eye,
   Expand,
   FileCode2,
+  FileText,
+  Focus,
   Heading,
   Minimize,
   Trash2,
@@ -19,6 +36,42 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const STORAGE_KEY = "interactive-markdown-editor-content-v2";
+const MARKED_CONFIGURED_FLAG = "__interactive_markdown_marked_configured__";
+
+hljs.registerLanguage("plaintext", plaintext);
+hljs.registerLanguage("text", plaintext);
+hljs.registerLanguage("bash", bash);
+hljs.registerLanguage("sh", bash);
+hljs.registerLanguage("shell", bash);
+hljs.registerLanguage("css", css);
+hljs.registerLanguage("js", javascript);
+hljs.registerLanguage("javascript", javascript);
+hljs.registerLanguage("json", json);
+hljs.registerLanguage("md", markdownLang);
+hljs.registerLanguage("markdown", markdownLang);
+hljs.registerLanguage("py", python);
+hljs.registerLanguage("python", python);
+hljs.registerLanguage("sql", sql);
+hljs.registerLanguage("ts", typescript);
+hljs.registerLanguage("typescript", typescript);
+hljs.registerLanguage("html", xml);
+hljs.registerLanguage("xml", xml);
+
+if (!(globalThis as Record<string, unknown>)[MARKED_CONFIGURED_FLAG]) {
+  marked.use(
+    markedHighlight({
+      langPrefix: "hljs language-",
+      emptyLangClass: "hljs",
+      highlight(code, lang) {
+        if (lang && hljs.getLanguage(lang)) {
+          return hljs.highlight(code, { language: lang }).value;
+        }
+        return hljs.highlightAuto(code).value;
+      },
+    }),
+  );
+  (globalThis as Record<string, unknown>)[MARKED_CONFIGURED_FLAG] = true;
+}
 
 const initialMarkdown = `# Добро пожаловать в Markdown Редактор!
 
@@ -45,6 +98,7 @@ greet("Мир");
 `;
 
 type MobileTab = "editor" | "preview";
+type WorkspaceMode = "split" | "preview" | "focus";
 
 const StatItem = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) => (
   <Card className="glass-surface">
@@ -60,6 +114,42 @@ const StatItem = ({ icon, label, value }: { icon: React.ReactNode; label: string
   </Card>
 );
 
+const getExportFileName = (extension: "md" | "html" | "pdf") => {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const hh = String(now.getHours()).padStart(2, "0");
+  const min = String(now.getMinutes()).padStart(2, "0");
+  return `markdown-${yyyy}${mm}${dd}-${hh}${min}.${extension}`;
+};
+
+const buildExportHtmlDocument = (contentHtml: string) => `<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Markdown Export</title>
+  <style>
+    body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#1f2937; line-height:1.65; max-width:960px; margin:32px auto; padding:0 20px; }
+    h1,h2,h3,h4,h5,h6 { line-height:1.25; margin:1.2em 0 .5em; }
+    h1,h2 { border-bottom:1px solid #e5e7eb; padding-bottom:.3em; }
+    p,ul,ol,blockquote,pre,table { margin:0 0 1em; }
+    ul,ol { padding-left:1.4em; }
+    blockquote { border-left:4px solid #d1d5db; margin-left:0; padding-left:1em; color:#6b7280; font-style:italic; }
+    code { background:#f3f4f6; border-radius:6px; padding:.12em .4em; }
+    pre { background:#f3f4f6; border-radius:12px; padding:14px; overflow:auto; }
+    pre code { background:transparent; padding:0; }
+    table { border-collapse:collapse; width:100%; }
+    th,td { border:1px solid #e5e7eb; padding:8px 10px; text-align:left; }
+    img { max-width:100%; height:auto; }
+  </style>
+</head>
+<body>
+${contentHtml}
+</body>
+</html>`;
+
 function App() {
   const [markdown, setMarkdown] = useState<string>(initialMarkdown);
   const [isCopied, setIsCopied] = useState<boolean>(false);
@@ -67,6 +157,7 @@ function App() {
   const [isResizing, setIsResizing] = useState(false);
   const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>("editor");
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("split");
   const [isDesktop, setIsDesktop] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     return window.matchMedia("(min-width: 1024px)").matches;
@@ -190,6 +281,42 @@ function App() {
     }
   };
 
+  const downloadTextFile = useCallback((fileName: string, fileContents: string, mimeType: string) => {
+    const blob = new Blob([fileContents], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const handleExportMarkdown = useCallback(() => {
+    downloadTextFile(getExportFileName("md"), markdown, "text/markdown;charset=utf-8");
+  }, [downloadTextFile, markdown]);
+
+  const handleExportHtml = useCallback(() => {
+    const htmlDocument = buildExportHtmlDocument(renderedHtml);
+    downloadTextFile(getExportFileName("html"), htmlDocument, "text/html;charset=utf-8");
+  }, [downloadTextFile, renderedHtml]);
+
+  const handleExportPdf = useCallback(() => {
+    const printWindow = window.open("", "_blank", "noopener,noreferrer");
+    if (!printWindow) return;
+
+    const htmlDocument = buildExportHtmlDocument(renderedHtml);
+    printWindow.document.open();
+    printWindow.document.write(htmlDocument);
+    printWindow.document.close();
+
+    printWindow.onload = () => {
+      printWindow.focus();
+      printWindow.print();
+    };
+  }, [renderedHtml]);
+
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!isDesktop) return;
     e.preventDefault();
@@ -264,7 +391,7 @@ function App() {
 
   const handleSyncedScroll = useCallback(
     (source: "editor" | "preview") => {
-      if (!isDesktop || isPreviewFullscreen) return;
+      if (!isDesktop || isPreviewFullscreen || workspaceMode !== "split") return;
 
       if (scrollSyncSourceRef.current && scrollSyncSourceRef.current !== source) {
         return;
@@ -280,13 +407,17 @@ function App() {
         scrollSyncSourceRef.current = null;
       });
     },
-    [isDesktop, isPreviewFullscreen, syncScrollByRatio],
+    [isDesktop, isPreviewFullscreen, syncScrollByRatio, workspaceMode],
   );
 
   const handleOutlineClick = useCallback(
     (outlineIndex: number) => {
-      if (!isDesktop && mobileTab === "editor") {
-        setMobileTab("preview");
+      if (!isDesktop) {
+        if (workspaceMode === "focus") {
+          setWorkspaceMode("preview");
+        } else if (mobileTab === "editor") {
+          setMobileTab("preview");
+        }
       }
 
       requestAnimationFrame(() => {
@@ -303,8 +434,13 @@ function App() {
         });
       });
     },
-    [isDesktop, mobileTab],
+    [isDesktop, mobileTab, workspaceMode],
   );
+
+  const showEditorPanel = !isPreviewFullscreen && workspaceMode !== "preview";
+  const showPreviewPanel = workspaceMode !== "focus";
+  const showStats = workspaceMode !== "focus";
+  const showOutline = !isPreviewFullscreen && workspaceMode !== "focus";
 
   const previewPanel = (
     <div className="flex h-full min-h-[48vh] flex-col overflow-hidden rounded-2xl border bg-card">
@@ -350,94 +486,169 @@ function App() {
           </CardHeader>
         </Card>
 
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatItem icon={<Type className="h-4 w-4" />} label="Слов" value={stats.words} />
-          <StatItem icon={<Type className="h-4 w-4" />} label="Символов" value={stats.charsWithSpaces} />
-          <StatItem icon={<Type className="h-4 w-4" />} label="Без пробелов" value={stats.charsWithoutSpaces} />
-          <StatItem icon={<Heading className="h-4 w-4" />} label="Заголовков" value={stats.headingsTotal} />
-        </section>
+        <Card className="glass-surface">
+          <CardContent className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline">Режим</Badge>
+              <Button
+                variant={workspaceMode === "split" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setWorkspaceMode("split")}
+              >
+                <Columns2 className="h-4 w-4" />
+                Split
+              </Button>
+              <Button
+                variant={workspaceMode === "preview" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setWorkspaceMode("preview")}
+              >
+                <Eye className="h-4 w-4" />
+                Preview only
+              </Button>
+              <Button
+                variant={workspaceMode === "focus" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setWorkspaceMode("focus")}
+              >
+                <Focus className="h-4 w-4" />
+                Focus
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleExportMarkdown}>
+                <FileText className="h-4 w-4" />
+                .md
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportHtml}>
+                <Download className="h-4 w-4" />
+                .html
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportPdf}>
+                <Download className="h-4 w-4" />
+                .pdf
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {showStats && (
+          <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatItem icon={<Type className="h-4 w-4" />} label="Слов" value={stats.words} />
+            <StatItem icon={<Type className="h-4 w-4" />} label="Символов" value={stats.charsWithSpaces} />
+            <StatItem icon={<Type className="h-4 w-4" />} label="Без пробелов" value={stats.charsWithoutSpaces} />
+            <StatItem icon={<Heading className="h-4 w-4" />} label="Заголовков" value={stats.headingsTotal} />
+          </section>
+        )}
 
         {isDesktop ? (
           <Card className="glass-surface">
             <CardContent className="p-4">
-              <div ref={editorPreviewContainerRef} className={`flex items-stretch ${isPreviewFullscreen ? "h-[76vh]" : "h-[68vh]"}`}>
-                {!isPreviewFullscreen && (
-                  <>
-                    <div
-                      className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border bg-card"
-                      style={{ width: `${editorWidth}%` }}
-                    >
-                      <div className="flex h-14 items-center justify-between border-b px-4">
-                        <h2 className="text-sm font-semibold">Markdown</h2>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{stats.words} слов</Badge>
-                          <Button variant="outline" size="sm" onClick={() => setMarkdown("")}>
-                            <Trash2 className="h-4 w-4" />
-                            Очистить
-                          </Button>
-                        </div>
-                      </div>
-                      <textarea
-                        ref={editorTextareaRef}
-                        value={markdown}
-                        onChange={(e) => setMarkdown(e.target.value)}
-                        onScroll={() => handleSyncedScroll("editor")}
-                        className="scrollbar-modern h-full w-full flex-1 resize-none bg-transparent p-4 font-mono text-sm leading-7 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        placeholder="Пиши Markdown здесь..."
-                        aria-label="Markdown Input"
-                      />
-                    </div>
-
-                    <div
-                      onMouseDown={handleMouseDown}
-                      className="group flex w-6 flex-shrink-0 cursor-col-resize items-center justify-center"
-                      role="separator"
-                      aria-orientation="vertical"
-                      aria-label="Resize panels"
-                    >
-                      <div className="h-10 w-1 rounded-full bg-border transition-colors group-hover:bg-primary/60" />
-                    </div>
-                  </>
-                )}
-                <div className={`h-full min-h-0 ${isPreviewFullscreen ? "w-full" : "flex-1"}`}>{previewPanel}</div>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="glass-surface">
-            <CardContent className="p-4">
-              <Tabs value={mobileTab} onValueChange={(value) => setMobileTab(value as MobileTab)}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="editor">Редактор</TabsTrigger>
-                  <TabsTrigger value="preview">Превью</TabsTrigger>
-                </TabsList>
-                <TabsContent value="editor">
-                  <div className="overflow-hidden rounded-2xl border bg-card">
+              <div
+                ref={editorPreviewContainerRef}
+                className={`flex items-stretch ${
+                  isPreviewFullscreen || workspaceMode === "preview" || workspaceMode === "focus" ? "h-[76vh]" : "h-[68vh]"
+                }`}
+              >
+                {showEditorPanel && (
+                  <div
+                    className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border bg-card"
+                    style={{ width: showPreviewPanel ? `${editorWidth}%` : "100%" }}
+                  >
                     <div className="flex h-14 items-center justify-between border-b px-4">
                       <h2 className="text-sm font-semibold">Markdown</h2>
-                      <Button variant="outline" size="sm" onClick={() => setMarkdown("")}>
-                        <Trash2 className="h-4 w-4" />
-                        Очистить
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{stats.words} слов</Badge>
+                        <Button variant="outline" size="sm" onClick={() => setMarkdown("")}>
+                          <Trash2 className="h-4 w-4" />
+                          Очистить
+                        </Button>
+                      </div>
                     </div>
                     <textarea
                       ref={editorTextareaRef}
                       value={markdown}
                       onChange={(e) => setMarkdown(e.target.value)}
                       onScroll={() => handleSyncedScroll("editor")}
-                      className="scrollbar-modern h-[52vh] w-full resize-none bg-transparent p-4 font-mono text-sm leading-7 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="scrollbar-modern h-full w-full flex-1 resize-none bg-transparent p-4 font-mono text-sm leading-7 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       placeholder="Пиши Markdown здесь..."
                       aria-label="Markdown Input"
                     />
                   </div>
-                </TabsContent>
-                <TabsContent value="preview">{previewPanel}</TabsContent>
-              </Tabs>
+                )}
+
+                {showEditorPanel && showPreviewPanel && (
+                  <div
+                    onMouseDown={handleMouseDown}
+                    className="group flex w-6 flex-shrink-0 cursor-col-resize items-center justify-center"
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label="Resize panels"
+                  >
+                    <div className="h-10 w-1 rounded-full bg-border transition-colors group-hover:bg-primary/60" />
+                  </div>
+                )}
+
+                {showPreviewPanel && <div className={`h-full min-h-0 ${showEditorPanel ? "flex-1" : "w-full"}`}>{previewPanel}</div>}
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="glass-surface">
+            <CardContent className="p-4">
+              {workspaceMode === "focus" ? (
+                <div className="overflow-hidden rounded-2xl border bg-card">
+                  <div className="flex h-14 items-center justify-between border-b px-4">
+                    <h2 className="text-sm font-semibold">Markdown</h2>
+                    <Button variant="outline" size="sm" onClick={() => setMarkdown("")}>
+                      <Trash2 className="h-4 w-4" />
+                      Очистить
+                    </Button>
+                  </div>
+                  <textarea
+                    ref={editorTextareaRef}
+                    value={markdown}
+                    onChange={(e) => setMarkdown(e.target.value)}
+                    className="scrollbar-modern h-[64vh] w-full resize-none bg-transparent p-4 font-mono text-sm leading-7 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    placeholder="Пиши Markdown здесь..."
+                    aria-label="Markdown Input"
+                  />
+                </div>
+              ) : workspaceMode === "preview" ? (
+                previewPanel
+              ) : (
+                <Tabs value={mobileTab} onValueChange={(value) => setMobileTab(value as MobileTab)}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="editor">Редактор</TabsTrigger>
+                    <TabsTrigger value="preview">Превью</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="editor">
+                    <div className="overflow-hidden rounded-2xl border bg-card">
+                      <div className="flex h-14 items-center justify-between border-b px-4">
+                        <h2 className="text-sm font-semibold">Markdown</h2>
+                        <Button variant="outline" size="sm" onClick={() => setMarkdown("")}>
+                          <Trash2 className="h-4 w-4" />
+                          Очистить
+                        </Button>
+                      </div>
+                      <textarea
+                        ref={editorTextareaRef}
+                        value={markdown}
+                        onChange={(e) => setMarkdown(e.target.value)}
+                        className="scrollbar-modern h-[52vh] w-full resize-none bg-transparent p-4 font-mono text-sm leading-7 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        placeholder="Пиши Markdown здесь..."
+                        aria-label="Markdown Input"
+                      />
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="preview">{previewPanel}</TabsContent>
+                </Tabs>
+              )}
             </CardContent>
           </Card>
         )}
 
-        {!isPreviewFullscreen && (
+        {showOutline && (
           <Card className="glass-surface">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Структура документа</CardTitle>
