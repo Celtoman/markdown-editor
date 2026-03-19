@@ -401,19 +401,22 @@ function App() {
           return true;
         };
 
-        const findSoftPageBreak = (startY: number, preferredEndY: number) => {
+        const findStrictPageBreak = (startY: number, preferredEndY: number) => {
           const searchRange = 140;
-          const minEndY = Math.floor(startY + pageHeightPx * 0.6);
-          const maxEndY = Math.min(sourceCanvas.height, Math.floor(startY + pageHeightPx * 1.1));
+          const minEndY = Math.floor(startY + pageHeightPx * 0.35);
+          const maxEndY = Math.min(sourceCanvas.height, Math.floor(startY + pageHeightPx * 1.35));
           const low = Math.max(minEndY, preferredEndY - searchRange);
           const high = Math.min(maxEndY, preferredEndY + searchRange);
           const minDistanceFromTop = Math.max(startY + 24, minEndY);
 
-          const blockCandidates = blockBoundariesPx.filter((candidateY) => candidateY >= minDistanceFromTop && candidateY <= high);
+          const blockCandidates = blockBoundariesPx.filter((candidateY) => candidateY >= minDistanceFromTop && candidateY <= maxEndY);
           if (blockCandidates.length > 0) {
-            return blockCandidates.reduce((best, current) =>
-              Math.abs(current - preferredEndY) < Math.abs(best - preferredEndY) ? current : best,
-            );
+            const beforePreferred = blockCandidates.filter((candidateY) => candidateY <= preferredEndY);
+            if (beforePreferred.length > 0) {
+              return beforePreferred[beforePreferred.length - 1];
+            }
+
+            return blockCandidates[0];
           }
 
           for (let offset = 0; offset <= searchRange; offset += 1) {
@@ -437,7 +440,11 @@ function App() {
         while (renderedHeightPx < sourceCanvas.height) {
           const preferredBottom = Math.min(sourceCanvas.height, Math.floor(renderedHeightPx + pageHeightPx));
           const isLastPage = preferredBottom >= sourceCanvas.height;
-          const pageBreakBottom = isLastPage ? sourceCanvas.height : findSoftPageBreak(renderedHeightPx, preferredBottom);
+          const computedBreak = isLastPage ? sourceCanvas.height : findStrictPageBreak(renderedHeightPx, preferredBottom);
+          const pageBreakBottom =
+            computedBreak > renderedHeightPx
+              ? computedBreak
+              : Math.min(sourceCanvas.height, renderedHeightPx + Math.max(1, Math.floor(pageHeightPx)));
           const sliceHeightPx = Math.max(1, pageBreakBottom - renderedHeightPx);
 
           const sliceCanvas = document.createElement("canvas");
