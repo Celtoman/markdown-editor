@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import DOMPurify from 'dompurify';
 
 // This tells TypeScript that the `marked` library is available globally,
 // as it's included via a <script> tag in index.html.
@@ -79,6 +80,10 @@ function App() {
   const [editorWidth, setEditorWidth] = useState(50);
   const [isResizing, setIsResizing] = useState(false);
   const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    return window.matchMedia('(min-width: 768px)').matches;
+  });
   
   const editorPreviewContainerRef = useRef<HTMLDivElement>(null);
 
@@ -87,7 +92,8 @@ function App() {
       return '<p>Загрузка парсера...</p>';
     }
     const processedText = markdown.replace(/^(#{1,6})\s*H[1-6]:\s*/gm, '$1 ');
-    return marked.parse(processedText, { gfm: true, breaks: true });
+    const unsafeHtml = marked.parse(processedText, { gfm: true, breaks: true });
+    return DOMPurify.sanitize(unsafeHtml, { USE_PROFILES: { html: true } });
   }, [markdown]);
 
   const plainText = useMemo(() => {
@@ -168,6 +174,7 @@ function App() {
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (!isDesktop) return;
     e.preventDefault();
     setIsResizing(true);
   };
@@ -177,14 +184,14 @@ function App() {
   }, []);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (isResizing && editorPreviewContainerRef.current) {
+    if (isDesktop && isResizing && editorPreviewContainerRef.current) {
       const container = editorPreviewContainerRef.current;
       const rect = container.getBoundingClientRect();
       const newWidthPercent = ((e.clientX - rect.left) / rect.width) * 100;
       const clampedWidth = Math.max(20, Math.min(80, newWidthPercent));
       setEditorWidth(clampedWidth);
     }
-  }, [isResizing]);
+  }, [isDesktop, isResizing]);
   
   useEffect(() => {
     if (isResizing) {
@@ -200,6 +207,30 @@ function App() {
       window.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isResizing, handleMouseMove, handleMouseUp]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const mediaQuery = window.matchMedia('(min-width: 768px)');
+    const updateScreenMode = () => {
+      setIsDesktop(mediaQuery.matches);
+    };
+
+    updateScreenMode();
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updateScreenMode);
+      return () => mediaQuery.removeEventListener('change', updateScreenMode);
+    }
+
+    mediaQuery.addListener(updateScreenMode);
+    return () => mediaQuery.removeListener(updateScreenMode);
+  }, []);
+
+  useEffect(() => {
+    if (!isDesktop && isResizing) {
+      setIsResizing(false);
+    }
+  }, [isDesktop, isResizing]);
   
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -226,13 +257,13 @@ function App() {
           </div>
            {/* Statistics Dashboard */}
            <div className="max-w-7xl mx-auto mt-6 bg-background/50 border-t border-b border-border py-3 px-4">
-              <div className="flex items-center justify-center gap-6 divide-x divide-border">
-                  <div className="flex items-center gap-6 px-4">
+              <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6">
+                  <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 px-2">
                       <StatItem label="Количество слов" value={stats.words} isLarge />
                       <StatItem label="Символов с пробелами" value={stats.charsWithSpaces} isLarge />
                       <StatItem label="Символов Без пробелов" value={stats.charsWithoutSpaces} isLarge />
                   </div>
-                  <div className="pl-6 flex items-center gap-4">
+                  <div className="w-full md:w-auto pt-3 md:pt-0 md:pl-6 border-t md:border-t-0 md:border-l border-border flex flex-wrap items-center justify-center gap-4">
                        {Object.entries(stats.headerCounts)
                           .filter(([, value]) => value > 0)
                           .map(([key, value]) => (
@@ -246,13 +277,13 @@ function App() {
 
       <main className={`flex-grow flex flex-col gap-4 ${isPreviewFullscreen ? 'p-0' : 'p-4'}`}>
         {/* Editor & Preview Panes with a fixed height */}
-        <div ref={editorPreviewContainerRef} className={`flex flex-col md:flex-row items-stretch ${isPreviewFullscreen ? 'flex-grow h-screen' : 'h-[70vh]'}`}>
+        <div ref={editorPreviewContainerRef} className={`flex flex-col md:flex-row items-stretch ${isPreviewFullscreen ? 'flex-grow h-screen' : 'h-auto md:h-[70vh]'}`}>
             {!isPreviewFullscreen && (
               <>
                 {/* Markdown Input Panel */}
                 <div 
-                  className="h-full flex flex-col rounded-lg border border-border shadow-sm"
-                  style={{ width: `${editorWidth}%`, backgroundColor: 'var(--card)' }}
+                  className="h-full min-h-[45vh] md:min-h-0 flex flex-col rounded-lg border border-border shadow-sm"
+                  style={{ width: isDesktop ? `${editorWidth}%` : '100%', backgroundColor: 'var(--card)' }}
                 >
                   <div className="p-3 border-b border-border flex-shrink-0">
                     <h2 className="text-sm font-medium text-card-foreground">Markdown</h2>
@@ -260,27 +291,30 @@ function App() {
                   <textarea
                     value={markdown}
                     onChange={(e) => setMarkdown(e.target.value)}
-                    className="flex-grow w-full p-4 resize-none focus:outline-none font-mono text-sm tracking-tight bg-transparent rounded-b-lg placeholder:text-muted-foreground"
+                    className="flex-grow w-full p-4 resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card font-mono text-sm tracking-tight bg-transparent rounded-b-lg placeholder:text-muted-foreground"
                     placeholder="Напишите ваш Markdown здесь..."
                     aria-label="Markdown Input"
                   />
                 </div>
 
                 {/* Resizer */}
-                <div
-                  onMouseDown={handleMouseDown}
-                  className="flex-shrink-0 w-6 flex items-center justify-center cursor-col-resize group"
-                  aria-label="Resize panels"
-                  role="separator"
-                >
-                    <DragHandleIcon />
-                </div>
+                {isDesktop && (
+                  <div
+                    onMouseDown={handleMouseDown}
+                    className="flex-shrink-0 w-6 flex items-center justify-center cursor-col-resize group"
+                    aria-label="Resize panels"
+                    role="separator"
+                    aria-orientation="vertical"
+                  >
+                      <DragHandleIcon />
+                  </div>
+                )}
               </>
             )}
 
             {/* Preview Panel */}
             <div 
-              className={`h-full flex flex-col shadow-sm overflow-hidden ${isPreviewFullscreen ? 'w-full rounded-none border-none' : 'flex-1 rounded-lg border border-border'}`}
+              className={`h-full min-h-[45vh] md:min-h-0 flex flex-col shadow-sm overflow-hidden ${isPreviewFullscreen ? 'w-full rounded-none border-none' : 'w-full md:flex-1 rounded-lg border border-border'}`}
               style={{ backgroundColor: 'var(--card)' }}
             >
                 <div className="p-3 border-b border-border flex justify-between items-center flex-shrink-0">
