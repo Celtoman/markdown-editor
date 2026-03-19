@@ -339,22 +339,54 @@ function App() {
       document.body.appendChild(container);
 
       try {
-        const { jsPDF } = await import("jspdf");
-        const pdf = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
+        const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
         const target = container.querySelector(".pdf-root") as HTMLElement | null;
         if (!target) throw new Error("PDF target not found");
 
-        await pdf.html(target, {
-          margin: [24, 24, 24, 24],
-          autoPaging: "text",
-          width: 547,
-          windowWidth: 794,
-          html2canvas: {
-            scale: 0.7,
-            useCORS: true,
-            backgroundColor: "#ffffff",
-          },
+        const sourceCanvas = await html2canvas(target, {
+          scale: Math.min(window.devicePixelRatio || 1, 2),
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          logging: false,
         });
+
+        const pdf = new jsPDF({ orientation: "p", unit: "pt", format: "a4", compress: true });
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 24;
+        const printableWidth = pageWidth - margin * 2;
+        const printableHeight = pageHeight - margin * 2;
+        const scale = printableWidth / sourceCanvas.width;
+        const pageHeightPx = printableHeight / scale;
+
+        let renderedHeightPx = 0;
+        let pageIndex = 0;
+
+        while (renderedHeightPx < sourceCanvas.height) {
+          const remainingPx = sourceCanvas.height - renderedHeightPx;
+          const sliceHeightPx = Math.max(1, Math.floor(Math.min(pageHeightPx, remainingPx)));
+
+          const sliceCanvas = document.createElement("canvas");
+          sliceCanvas.width = sourceCanvas.width;
+          sliceCanvas.height = sliceHeightPx;
+          const sliceContext = sliceCanvas.getContext("2d");
+          if (!sliceContext) throw new Error("PDF slice context not found");
+
+          sliceContext.fillStyle = "#ffffff";
+          sliceContext.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+          sliceContext.drawImage(sourceCanvas, 0, renderedHeightPx, sourceCanvas.width, sliceHeightPx, 0, 0, sourceCanvas.width, sliceHeightPx);
+
+          const imageData = sliceCanvas.toDataURL("image/png");
+          if (pageIndex > 0) {
+            pdf.addPage();
+          }
+
+          const renderedHeightPt = sliceHeightPx * scale;
+          pdf.addImage(imageData, "PNG", margin, margin, printableWidth, renderedHeightPt, undefined, "FAST");
+
+          renderedHeightPx += sliceHeightPx;
+          pageIndex += 1;
+        }
 
         pdf.save(getExportFileName("pdf"));
       } catch {
