@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Логотип Markdown Редактора">
+  <defs>
+    <linearGradient id="markflow-dark" x1="72" y1="92" x2="332" y2="364" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#31343E" />
+      <stop offset="0.52" stop-color="#272A33" />
+      <stop offset="1" stop-color="#1F222C" />
+    </linearGradient>
+    <linearGradient id="markflow-orange" x1="210" y1="138" x2="436" y2="390" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF9321" />
+      <stop offset="0.62" stop-color="#FF840E" />
+      <stop offset="1" stop-color="#FF7A06" />
+    </linearGradient>
+  </defs>
+
+  <rect x="238" y="130" width="192" height="200" rx="14" fill="url(#markflow-orange)" transform="rotate(-7 334 230)" />
+  <path d="M276 174h96l40 34v108a8 8 0 0 1-8 8H276a8 8 0 0 1-8-8V182a8 8 0 0 1 8-8z" fill="#F6F6F6" transform="rotate(2 340 249)" />
+  <path d="M372 174v30a7 7 0 0 0 7 7h33z" fill="#D9D9D9" transform="rotate(2 340 249)" />
+  <rect x="286" y="227" width="82" height="26" rx="3" fill="#FFAA00" transform="rotate(2 327 240)" />
+  <rect x="286" y="269" width="64" height="16" rx="3" fill="#2A2E39" transform="rotate(2 318 277)" />
+
+  <rect x="88" y="126" width="224" height="220" rx="14" fill="url(#markflow-dark)" transform="rotate(13 200 236)" />
+  <path d="M136 191a6 6 0 0 1 6-6h28l34 43 34-43h28a6 6 0 0 1 6 6v119a6 6 0 0 1-6 6h-26a6 6 0 0 1-6-6v-59l-24 30a8 8 0 0 1-12 0l-24-30v59a6 6 0 0 1-6 6h-26a6 6 0 0 1-6-6z" fill="#F7F7F7" transform="rotate(13 204 252)" />
+  <rect x="136" y="280" width="98" height="18" rx="4" fill="#FFB000" transform="rotate(13 185 289)" />
+</svg>

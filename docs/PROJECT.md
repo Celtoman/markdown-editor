@@ -1,63 +1,73 @@
-# Документация проекта
+# Архитектура проекта
 
 ## Назначение
 
-`interactive-markdown-editor` — клиентское React-приложение для написания Markdown с мгновенным предпросмотром и экспортом.
+`interactive-markdown-editor` — одностраничное React-приложение для подготовки Markdown-документов: ввод, предпросмотр, анализ структуры и экспорт.
 
-## Архитектура
+## Структура кода
 
-- Основная логика расположена в `App.tsx`.
-- UI-компоненты в `components/ui` (shadcn-style primitives).
-- Утилиты в `lib/utils.ts`.
-- Стили в `index.css` (Tailwind + переменные тем).
+- `App.tsx` — композиция страницы, управление режимами workspace, top-nav, split layout.
+- `features/editor/components/MarkdownEditorPane.tsx` — UI-панель редактора.
+- `features/editor/components/KnowledgeSections.tsx` — контентные UX/SEO-блоки (включая шпаргалку).
+- `features/editor/hooks/useEditorPersistence.ts` — работа с `localStorage`.
+- `features/editor/hooks/useExportActions.ts` — экспорт `.md/.html/.pdf`.
+- `features/editor/hooks/useThemeMode.ts` — light/dark/system тема (cookie + `prefers-color-scheme`).
+- `components/ui/*` — UI primitives в стиле shadcn.
+- `index.css` — дизайн-токены и глобальные стили.
+- `public/*` — SEO/manifest/robots/sitemap assets.
 
-## Ключевые модули
+## Ключевые продуктовые блоки
 
-- Рендер Markdown: `marked`.
-- Санитизация HTML: `DOMPurify`.
-- Подсветка кода: `highlight.js` + `marked-highlight`.
-- Экспорт PDF: `html2pdf.js`.
+1. Редактор + предпросмотр с синхронизацией скролла.
+2. Режимы работы:
+   - `split`
+   - `preview`
+   - `focus`
+3. Экспорт:
+   - `.md`
+   - `.html`
+   - `.pdf` (через `html2pdf.js`)
+4. Верхняя якорная навигация:
+   - `#section-what-is` (`О редакторе`)
+   - `#section-why-choose` (`Преимущества`)
+   - `#section-cheatsheet` (`Шпаргалка по Markdown`)
 
-## Темизация
+## Состояние и URL
 
-- Поддерживаются режимы: `light`, `dark`, `system`.
-- Режим темы хранится в cookie `markdown-editor-theme`.
-- На корневой элемент `html` добавляется/снимается класс `dark`.
+- Markdown-контент: `localStorage` key `interactive-markdown-editor-content-v2`.
+- Тема: cookie `markdown-editor-theme`.
+- UI state синхронизируется в URL query:
+  - `mode=preview|focus`
+  - `tab=preview` (на mobile)
 
-## Состояние редактора
+## SEO и метаданные
 
-- Контент сохраняется в `localStorage` (`interactive-markdown-editor-content-v2`).
-- На desktop доступно изменение ширины панелей.
-- Реализована синхронизация прокрутки редактора и предпросмотра в режиме split.
+- Базовые meta/OG/Twitter/JSON-LD в `index.html`.
+- `canonical`, `og:url`, `og:image` содержат плейсхолдер `__SITE_URL__`, заменяемый на старте контейнера.
+- `robots.txt` и `sitemap.xml` генерируются из `*.template`.
 
-## Экспорт
+## Production-контейнер
 
-- `.md`: сохраняет исходный markdown.
-- `.html`: генерирует самостоятельный HTML-документ.
-- `.pdf`: генерирует PDF из HTML-предпросмотра.
+- Build: multi-stage `Dockerfile` (`node:20-alpine` → `nginx:1.27-alpine`).
+- Runtime config: `docker/nginx.conf`.
+- Entrypoint: `docker/entrypoint.sh`.
+- Healthcheck endpoint: `/healthz`.
 
-## Переменные окружения
-
-- Локальная разработка: переменные окружения не требуются.
-- Production-контейнер: рекомендуется `SITE_URL` для корректных canonical/OG/sitemap.
-
-## Production и деплой
-
-- Для деплоя в Coolify используется `Dockerfile`.
-- Runtime: `nginx:alpine`.
-- Healthcheck: `/healthz`.
-- SEO-шаблоны `robots.txt` и `sitemap.xml` заполняются доменом на старте контейнера.
-- Дополнительные SEO-страницы расположены в `public/markdown-to-pdf`, `public/markdown-to-html`, `public/markdown-syntax-guide`.
-
-## Локальная разработка
-
-```bash
-npm install
-npm run dev
-```
-
-Сборка:
+## Локальная проверка перед коммитом
 
 ```bash
 npm run build
 ```
+
+Опционально (если доступен Docker daemon):
+
+```bash
+docker build -t interactive-markdown-editor:local .
+docker run --rm -p 8080:80 -e SITE_URL=https://example.com interactive-markdown-editor:local
+```
+
+Проверить:
+
+- `http://localhost:8080/healthz`
+- `http://localhost:8080/robots.txt`
+- `http://localhost:8080/sitemap.xml`

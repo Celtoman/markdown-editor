@@ -29,12 +29,13 @@ import {
   FileCode2,
   FileText,
   Focus,
+  Menu,
   Monitor,
   Moon,
   Minimize,
   Sun,
-  Trash2,
   Type,
+  X,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +49,11 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { KnowledgeSections } from "@/features/editor/components/KnowledgeSections";
+import { MarkdownEditorPane } from "@/features/editor/components/MarkdownEditorPane";
+import { useEditorPersistence } from "@/features/editor/hooks/useEditorPersistence";
+import { useExportActions } from "@/features/editor/hooks/useExportActions";
+import { type ThemeMode, useThemeMode } from "@/features/editor/hooks/useThemeMode";
 
 const STORAGE_KEY = "interactive-markdown-editor-content-v2";
 const MARKED_CONFIGURED_FLAG = "__interactive_markdown_marked_configured__";
@@ -113,77 +119,34 @@ greet("Мир");
 
 type MobileTab = "editor" | "preview";
 type WorkspaceMode = "split" | "preview" | "focus";
-type ThemeMode = "light" | "dark" | "system";
-
-const THEME_COOKIE_KEY = "markdown-editor-theme";
-
-const getCookie = (name: string) => {
-  if (typeof document === "undefined") return null;
-  const escaped = name.replace(/[-[\]/{}()*+?.\\^$|]/g, "\\$&");
-  const match = document.cookie.match(new RegExp(`(?:^|; )${escaped}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
-};
-
-const setCookie = (
-  name: string,
-  value: string,
-  maxAgeSeconds = 60 * 60 * 24 * 365,
-) => {
-  if (typeof document === "undefined") return;
-  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAgeSeconds}; samesite=lax`;
-};
-
-const getExportFileName = (extension: "md" | "html" | "pdf") => {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  const hh = String(now.getHours()).padStart(2, "0");
-  const min = String(now.getMinutes()).padStart(2, "0");
-  return `markdown-${yyyy}${mm}${dd}-${hh}${min}.${extension}`;
-};
-
-const buildExportHtmlDocument = (contentHtml: string) => `<!doctype html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Markdown Export</title>
-  <style>
-    body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#1f2937; line-height:1.65; max-width:960px; margin:32px auto; padding:0 20px; }
-    h1,h2,h3,h4,h5,h6 { line-height:1.25; margin:1.2em 0 .5em; }
-    h1,h2 { border-bottom:1px solid #e5e7eb; padding-bottom:.3em; }
-    p,ul,ol,blockquote,pre,table { margin:0 0 1em; }
-    ul,ol { padding-left:1.4em; }
-    blockquote { border-left:4px solid #d1d5db; margin-left:0; padding-left:1em; color:#6b7280; font-style:italic; }
-    code { background:#f3f4f6; border-radius:6px; padding:.12em .4em; }
-    pre { background:#f3f4f6; border-radius:12px; padding:14px; overflow:auto; }
-    pre code { background:transparent; padding:0; }
-    table { border-collapse:collapse; width:100%; }
-    th,td { border:1px solid #e5e7eb; padding:8px 10px; text-align:left; }
-    img { max-width:100%; height:auto; }
-  </style>
-</head>
-<body>
-${contentHtml}
-</body>
-</html>`;
+const isThemeMode = (value: string): value is ThemeMode =>
+  value === "light" || value === "dark" || value === "system";
+const isMobileTab = (value: string): value is MobileTab =>
+  value === "editor" || value === "preview";
+const isWorkspaceMode = (value: string): value is WorkspaceMode =>
+  value === "split" || value === "preview" || value === "focus";
 
 function App() {
-  const [markdown, setMarkdown] = useState<string>(initialMarkdown);
+  const [markdown, setMarkdown] = useEditorPersistence(
+    STORAGE_KEY,
+    initialMarkdown,
+  );
   const [isCopied, setIsCopied] = useState<boolean>(false);
   const [editorWidth, setEditorWidth] = useState(48);
   const [isResizing, setIsResizing] = useState(false);
   const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
-  const [mobileTab, setMobileTab] = useState<MobileTab>("editor");
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("split");
-  const [isExportingPdf, setIsExportingPdf] = useState(false);
-  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
-    const stored = getCookie(THEME_COOKIE_KEY);
-    if (stored === "light" || stored === "dark" || stored === "system")
-      return stored;
-    return "system";
+  const [mobileTab, setMobileTab] = useState<MobileTab>(() => {
+    if (typeof window === "undefined") return "editor";
+    const urlTab = new URLSearchParams(window.location.search).get("tab");
+    return urlTab && isMobileTab(urlTab) ? urlTab : "editor";
   });
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() => {
+    if (typeof window === "undefined") return "split";
+    const urlMode = new URLSearchParams(window.location.search).get("mode");
+    return urlMode && isWorkspaceMode(urlMode) ? urlMode : "split";
+  });
+  const [isTopMenuOpen, setIsTopMenuOpen] = useState(false);
+  const [themeMode, setThemeMode] = useThemeMode();
   const [isDesktop, setIsDesktop] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     return window.matchMedia("(min-width: 1024px)").matches;
@@ -194,42 +157,6 @@ function App() {
   const previewScrollRef = useRef<HTMLDivElement>(null);
   const scrollSyncSourceRef = useRef<"editor" | "preview" | null>(null);
   const scrollSyncRafRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved) setMarkdown(saved);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEY, markdown);
-  }, [markdown]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-
-    const applyTheme = () => {
-      const useDark =
-        themeMode === "dark" || (themeMode === "system" && mediaQuery.matches);
-      document.documentElement.classList.toggle("dark", useDark);
-      document.documentElement.style.colorScheme = useDark ? "dark" : "light";
-    };
-
-    applyTheme();
-    setCookie(THEME_COOKIE_KEY, themeMode);
-
-    const handleSystemThemeChange = () => {
-      if (themeMode === "system") {
-        applyTheme();
-      }
-    };
-
-    mediaQuery.addEventListener("change", handleSystemThemeChange);
-    return () =>
-      mediaQuery.removeEventListener("change", handleSystemThemeChange);
-  }, [themeMode]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -246,6 +173,55 @@ function App() {
       setIsResizing(false);
     }
   }, [isDesktop]);
+
+  useEffect(() => {
+    if (isDesktop) {
+      setIsTopMenuOpen(false);
+    }
+  }, [isDesktop]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const urlTab = params.get("tab");
+      const urlMode = params.get("mode");
+      setMobileTab(urlTab && isMobileTab(urlTab) ? urlTab : "editor");
+      setWorkspaceMode(urlMode && isWorkspaceMode(urlMode) ? urlMode : "split");
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const currentUrl = new URL(window.location.href);
+    if (workspaceMode === "split") {
+      currentUrl.searchParams.delete("mode");
+    } else {
+      currentUrl.searchParams.set("mode", workspaceMode);
+    }
+
+    if (mobileTab === "editor") {
+      currentUrl.searchParams.delete("tab");
+    } else {
+      currentUrl.searchParams.set("tab", mobileTab);
+    }
+
+    const nextSearch = currentUrl.searchParams.toString();
+    const normalizedSearch = nextSearch ? `?${nextSearch}` : "";
+
+    if (normalizedSearch !== window.location.search) {
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${currentUrl.pathname}${normalizedSearch}${currentUrl.hash}`,
+      );
+    }
+  }, [mobileTab, workspaceMode]);
 
   const renderedHtml = useMemo(() => {
     const processedText = markdown.replace(/^(#{1,6})\s*H[1-6]:\s*/gm, "$1 ");
@@ -364,158 +340,8 @@ function App() {
     }
   };
 
-  const downloadTextFile = useCallback(
-    (fileName: string, fileContents: string, mimeType: string) => {
-      const blob = new Blob([fileContents], { type: mimeType });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = fileName;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
-    },
-    [],
-  );
-
-  const handleExportMarkdown = useCallback(() => {
-    downloadTextFile(
-      getExportFileName("md"),
-      markdown,
-      "text/markdown;charset=utf-8",
-    );
-  }, [downloadTextFile, markdown]);
-
-  const handleExportHtml = useCallback(() => {
-    const htmlDocument = buildExportHtmlDocument(renderedHtml);
-    downloadTextFile(
-      getExportFileName("html"),
-      htmlDocument,
-      "text/html;charset=utf-8",
-    );
-  }, [downloadTextFile, renderedHtml]);
-
-  const handleExportPdf = useCallback(() => {
-    if (isExportingPdf) return;
-
-    const exportPdf = async () => {
-      setIsExportingPdf(true);
-      const container = document.createElement("div");
-      container.setAttribute("aria-hidden", "true");
-      container.style.position = "fixed";
-      container.style.left = "-99999px";
-      container.style.top = "0";
-      container.style.width = "794px";
-      container.style.background = "#ffffff";
-      container.style.color = "#1f2937";
-      container.style.padding = "0";
-
-      container.innerHTML = `
-        <style>
-          .pdf-root { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; line-height: 1.65; max-width: 960px; margin: 0 auto; padding: 32px 20px; color: #1f2937; }
-          .pdf-root h1,.pdf-root h2,.pdf-root h3,.pdf-root h4,.pdf-root h5,.pdf-root h6 { line-height: 1.25; margin: 1.2em 0 .5em; font-weight: 700; }
-          .pdf-root h1 { font-size: 2rem; font-weight: 800; }
-          .pdf-root h2 { font-size: 1.6rem; }
-          .pdf-root h3 { font-size: 1.35rem; }
-          .pdf-root h4 { font-size: 1.15rem; }
-          .pdf-root h5 { font-size: 1rem; }
-          .pdf-root h6 { font-size: 0.92rem; }
-          .pdf-root h1,.pdf-root h2 { border-bottom: 1px solid #e5e7eb; padding-bottom: .3em; }
-          .pdf-root p,.pdf-root ul,.pdf-root ol,.pdf-root blockquote,.pdf-root pre,.pdf-root table { margin: 0 0 1em; font-size: 1rem; }
-          .pdf-root ul,.pdf-root ol { padding-left: 1.4em; }
-          .pdf-root li + li { margin-top: .25em; }
-          .pdf-root strong { font-weight: 700; }
-          .pdf-root em { font-style: italic; }
-          .pdf-root blockquote { border-left: 4px solid #d1d5db; margin-left: 0; padding-left: 1em; color: #6b7280; font-style: italic; }
-          .pdf-root code { background: #f3f4f6; border-radius: 6px; padding: .12em .4em; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-          .pdf-root pre { background: #f3f4f6; border-radius: 12px; padding: 14px; overflow: hidden; white-space: pre-wrap; word-break: break-word; }
-          .pdf-root pre code { background: transparent; padding: 0; font-size: .92em; line-height: 1.5; }
-          .pdf-root table { border-collapse: collapse; width: 100%; }
-          .pdf-root thead { background: #f8fafc; }
-          .pdf-root th,.pdf-root td { border: 1px solid #e5e7eb; padding: 8px 10px; text-align: left; }
-          .pdf-root img { max-width: 100%; height: auto; }
-          .pdf-root h1,.pdf-root h2,.pdf-root h3,.pdf-root h4,.pdf-root h5,.pdf-root h6,
-          .pdf-root p,.pdf-root blockquote,.pdf-root pre,.pdf-root table,
-          .pdf-root ul,.pdf-root ol,.pdf-root li,.pdf-root img,.pdf-root hr {
-            break-inside: avoid;
-            page-break-inside: avoid;
-          }
-          .pdf-root p {
-            orphans: 3;
-            widows: 3;
-          }
-        </style>
-        <article class="pdf-root">${renderedHtml}</article>
-      `;
-
-      document.body.appendChild(container);
-
-      try {
-        const html2PdfModule = await import("html2pdf.js");
-        const html2pdf = (html2PdfModule.default ?? html2PdfModule) as {
-          (): {
-            set: (options: Record<string, unknown>) => {
-              from: (element: HTMLElement) => { save: () => Promise<void> };
-            };
-          };
-        };
-
-        const target = container.querySelector(
-          ".pdf-root",
-        ) as HTMLElement | null;
-        if (!target) throw new Error("PDF target not found");
-
-        const options = {
-          margin: [16, 16, 16, 16],
-          filename: getExportFileName("pdf"),
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: {
-            scale: Math.min((window.devicePixelRatio || 1) * 1.5, 3),
-            useCORS: true,
-            backgroundColor: "#ffffff",
-            logging: false,
-            letterRendering: true,
-          },
-          jsPDF: {
-            unit: "pt",
-            format: "a4",
-            orientation: "portrait",
-            compress: true,
-          },
-          pagebreak: {
-            mode: ["css", "legacy", "avoid-all"],
-            avoid: [
-              "h1",
-              "h2",
-              "h3",
-              "h4",
-              "h5",
-              "h6",
-              "p",
-              "blockquote",
-              "pre",
-              "table",
-              "ul",
-              "ol",
-              "li",
-              "img",
-              "hr",
-            ],
-          },
-        };
-
-        await html2pdf().set(options).from(target).save();
-      } catch {
-        window.alert("Не удалось экспортировать PDF. Попробуйте снова.");
-      } finally {
-        container.remove();
-        setIsExportingPdf(false);
-      }
-    };
-
-    void exportPdf();
-  }, [isExportingPdf, renderedHtml]);
+  const { isExportingPdf, handleExportMarkdown, handleExportHtml, handleExportPdf } =
+    useExportActions({ markdown, renderedHtml });
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!isDesktop) return;
@@ -688,6 +514,61 @@ function App() {
   const showPreviewPanel = workspaceMode !== "focus";
   const showStats = true;
   const showOutline = !isPreviewFullscreen && workspaceMode !== "focus";
+  const resourceLinks = [
+    {
+      href: "#section-what-is",
+      label: "О редакторе",
+    },
+    {
+      href: "#section-why-choose",
+      label: "Преимущества",
+    },
+    {
+      href: "#section-cheatsheet",
+      label: "Шпаргалка по Markdown",
+    },
+  ] as const;
+
+  const themeSwitcher = (
+    <Tabs
+      value={themeMode}
+      onValueChange={(value) => {
+        if (isThemeMode(value)) {
+          setThemeMode(value);
+        }
+      }}
+    >
+      <TabsList className="h-9 p-0.5">
+        <TabsTrigger
+          value="light"
+          className="h-8 w-8 p-0"
+          aria-label="Светлая тема"
+          title="Светлая тема"
+        >
+          <Sun className="h-3.5 w-3.5" />
+          <span className="sr-only">Светлая</span>
+        </TabsTrigger>
+        <TabsTrigger
+          value="dark"
+          className="h-8 w-8 p-0"
+          aria-label="Тёмная тема"
+          title="Тёмная тема"
+        >
+          <Moon className="h-3.5 w-3.5" />
+          <span className="sr-only">Тёмная</span>
+        </TabsTrigger>
+        <TabsTrigger
+          value="system"
+          className="h-8 w-8 p-0"
+          aria-label="Системная тема"
+          title="Системная тема"
+        >
+          <Monitor className="h-3.5 w-3.5" />
+          <span className="sr-only">Системная</span>
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
+  );
 
   const previewPanel = (
     <div className="flex h-full min-h-[48vh] flex-col overflow-hidden rounded-2xl border bg-card">
@@ -705,6 +586,9 @@ function App() {
             )}
             {isCopied ? "Скопировано" : "Копировать"}
           </Button>
+          <span className="sr-only" aria-live="polite">
+            {isCopied ? "Содержимое предпросмотра скопировано в буфер обмена." : ""}
+          </span>
           <Button
             variant="outline"
             size="icon"
@@ -740,48 +624,91 @@ function App() {
       </a>
       <main id="main-content">
         <div className="mx-auto w-full max-w-[1820px] space-y-6 px-4 py-6 md:space-y-8 md:px-6 md:py-10 xl:px-8">
-          <Card className="hero-accent glass-surface overflow-hidden rounded-3xl border-white/20">
-            <div className="absolute right-4 top-4 z-20 md:right-6 md:top-6">
-              <Card className="glass-surface w-fit">
-                <CardContent className="p-2">
-                  <Tabs
-                    value={themeMode}
-                    onValueChange={(value) => setThemeMode(value as ThemeMode)}
+          <Card className="glass-surface w-full rounded-2xl border-white/50">
+            <CardContent className="px-3 py-2 md:px-4 md:py-2.5">
+              <div className="flex items-center gap-2">
+                <a
+                  href="/"
+                  className="flex items-center gap-2 rounded-md px-1 py-1 text-foreground transition-colors hover:bg-accent/40"
+                  aria-label="Перейти на главную страницу редактора"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-md">
+                    <img
+                      src="/logo-markflow.svg"
+                      alt=""
+                      width={32}
+                      height={32}
+                      className="h-8 w-8"
+                      loading="eager"
+                    />
+                  </span>
+                  <span className="text-sm font-semibold tracking-tight md:text-[15px]">
+                    Markdown Редактор
+                  </span>
+                </a>
+
+                <nav
+                  className="ml-1 hidden items-center gap-0.5 lg:flex"
+                  aria-label="Полезные материалы"
+                >
+                  {resourceLinks.map((link) => (
+                    <Button
+                      key={link.href}
+                      asChild
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2.5 text-[13px]"
+                    >
+                      <a href={link.href}>{link.label}</a>
+                    </Button>
+                  ))}
+                </nav>
+
+                <div className="ml-auto flex items-center gap-1.5">
+                  {themeSwitcher}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 lg:hidden"
+                    aria-label={
+                      isTopMenuOpen ? "Свернуть меню" : "Развернуть меню"
+                    }
+                    onClick={() => setIsTopMenuOpen((prev) => !prev)}
                   >
-                    <TabsList className="h-9">
-                      <TabsTrigger
-                        value="light"
-                        className="h-7 w-8 p-0"
-                        aria-label="Светлая тема"
-                        title="Светлая тема"
+                    {isTopMenuOpen ? (
+                      <X className="h-4 w-4" />
+                    ) : (
+                      <Menu className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {isTopMenuOpen && (
+                <div className="mt-2 border-t pt-2 lg:hidden">
+                  <nav
+                    className="grid gap-2"
+                    aria-label="Мобильное меню ссылок"
+                  >
+                    {resourceLinks.map((link) => (
+                      <a
+                        key={link.href}
+                        href={link.href}
+                        className="rounded-md border bg-background/50 px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/40"
+                        onClick={() => setIsTopMenuOpen(false)}
                       >
-                        <Sun className="h-4 w-4" />
-                        <span className="sr-only">Светлая</span>
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="dark"
-                        className="h-7 w-8 p-0"
-                        aria-label="Тёмная тема"
-                        title="Тёмная тема"
-                      >
-                        <Moon className="h-4 w-4" />
-                        <span className="sr-only">Тёмная</span>
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="system"
-                        className="h-7 w-8 p-0"
-                        aria-label="Системная тема"
-                        title="Системная тема"
-                      >
-                        <Monitor className="h-4 w-4" />
-                        <span className="sr-only">Системная</span>
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </CardContent>
-              </Card>
-            </div>
-            <CardContent className="p-6 pt-20 md:p-10">
+                        {link.label}
+                      </a>
+                    ))}
+                  </nav>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="hero-accent glass-surface overflow-hidden rounded-3xl border-white/20">
+            <CardContent className="p-6 md:p-10">
               <div className="space-y-4">
                 <h1 className="pr-2 text-4xl font-bold tracking-tight text-foreground md:pr-0 md:text-5xl">
                   Интерактивный Markdown Редактор
@@ -916,28 +843,6 @@ function App() {
             </Card>
           </section>
 
-          <Card className="glass-surface">
-            <CardContent className="p-4 md:p-5">
-              <h2 className="text-sm font-semibold text-foreground">
-                Полезные материалы
-              </h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Руководства и конвертеры для работы с Markdown.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button asChild variant="outline" size="sm">
-                  <a href="/markdown-to-pdf/">Markdown в PDF</a>
-                </Button>
-                <Button asChild variant="outline" size="sm">
-                  <a href="/markdown-to-html/">Markdown в HTML</a>
-                </Button>
-                <Button asChild variant="outline" size="sm">
-                  <a href="/markdown-syntax-guide/">Гайд по синтаксису</a>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
           {isDesktop ? (
             <Card className="glass-surface">
               <CardContent className="p-4">
@@ -952,43 +857,20 @@ function App() {
                   }`}
                 >
                   {showEditorPanel && (
-                    <div
+                    <MarkdownEditorPane
+                      markdown={markdown}
+                      onMarkdownChange={setMarkdown}
+                      onClear={handleClearMarkdown}
+                      textareaRef={editorTextareaRef}
+                      onScroll={() => handleSyncedScroll("editor")}
+                      showWordBadge
+                      wordCount={stats.words}
                       className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border bg-card"
                       style={{
                         width: showPreviewPanel ? `${editorWidth}%` : "100%",
                       }}
-                    >
-                      <div className="flex h-14 items-center justify-between border-b px-4">
-                        <h2 className="text-sm font-semibold">
-                          Редактор Markdown
-                        </h2>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{stats.words} слов</Badge>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleClearMarkdown}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Очистить
-                          </Button>
-                        </div>
-                      </div>
-                      <textarea
-                        ref={editorTextareaRef}
-                        value={markdown}
-                        onChange={(e) => setMarkdown(e.target.value)}
-                        onScroll={() => handleSyncedScroll("editor")}
-                        className="scrollbar-modern h-full w-full flex-1 resize-none bg-transparent p-4 font-mono text-sm leading-7 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        placeholder="Пиши Markdown здесь…"
-                        aria-label="Поле ввода Markdown"
-                        name="markdown"
-                        autoComplete="off"
-                        spellCheck={false}
-                        autoCapitalize="off"
-                        autoCorrect="off"
-                      />
-                    </div>
+                      textareaClassName="scrollbar-modern h-full w-full flex-1 resize-none bg-transparent p-4 font-mono text-sm leading-7 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
                   )}
 
                   {showEditorPanel && showPreviewPanel && (
@@ -1022,34 +904,13 @@ function App() {
             <Card className="glass-surface">
               <CardContent className="p-4">
                 {workspaceMode === "focus" ? (
-                  <div className="overflow-hidden rounded-2xl border bg-card">
-                    <div className="flex h-14 items-center justify-between border-b px-4">
-                      <h2 className="text-sm font-semibold">
-                        Редактор Markdown
-                      </h2>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleClearMarkdown}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Очистить
-                      </Button>
-                    </div>
-                    <textarea
-                      ref={editorTextareaRef}
-                      value={markdown}
-                      onChange={(e) => setMarkdown(e.target.value)}
-                      className="scrollbar-modern h-[64vh] w-full resize-none bg-transparent p-4 font-mono text-sm leading-7 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      placeholder="Пиши Markdown здесь…"
-                      aria-label="Поле ввода Markdown"
-                      name="markdown"
-                      autoComplete="off"
-                      spellCheck={false}
-                      autoCapitalize="off"
-                      autoCorrect="off"
-                    />
-                  </div>
+                  <MarkdownEditorPane
+                    markdown={markdown}
+                    onMarkdownChange={setMarkdown}
+                    onClear={handleClearMarkdown}
+                    textareaRef={editorTextareaRef}
+                    textareaClassName="scrollbar-modern h-[64vh] w-full resize-none bg-transparent p-4 font-mono text-sm leading-7 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
                 ) : workspaceMode === "preview" ? (
                   previewPanel
                 ) : (
@@ -1062,34 +923,13 @@ function App() {
                       <TabsTrigger value="preview">Превью</TabsTrigger>
                     </TabsList>
                     <TabsContent value="editor">
-                      <div className="overflow-hidden rounded-2xl border bg-card">
-                        <div className="flex h-14 items-center justify-between border-b px-4">
-                          <h2 className="text-sm font-semibold">
-                            Редактор Markdown
-                          </h2>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleClearMarkdown}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Очистить
-                          </Button>
-                        </div>
-                        <textarea
-                          ref={editorTextareaRef}
-                          value={markdown}
-                          onChange={(e) => setMarkdown(e.target.value)}
-                          className="scrollbar-modern h-[52vh] w-full resize-none bg-transparent p-4 font-mono text-sm leading-7 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          placeholder="Пиши Markdown здесь…"
-                          aria-label="Поле ввода Markdown"
-                          name="markdown"
-                          autoComplete="off"
-                          spellCheck={false}
-                          autoCapitalize="off"
-                          autoCorrect="off"
-                        />
-                      </div>
+                      <MarkdownEditorPane
+                        markdown={markdown}
+                        onMarkdownChange={setMarkdown}
+                        onClear={handleClearMarkdown}
+                        textareaRef={editorTextareaRef}
+                        textareaClassName="scrollbar-modern h-[52vh] w-full resize-none bg-transparent p-4 font-mono text-sm leading-7 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      />
                     </TabsContent>
                     <TabsContent value="preview">{previewPanel}</TabsContent>
                   </Tabs>
@@ -1143,6 +983,8 @@ function App() {
               </CardContent>
             </Card>
           )}
+
+          <KnowledgeSections />
 
           <Separator />
         </div>
