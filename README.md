@@ -72,6 +72,10 @@ npm run build
 - `/healthz`
 - `/robots.txt`
 - `/sitemap.xml`
+- `/non-existent-page` (должен открыться кастомный `404` с HTTP-статусом `404`)
+- `http://домен/` → редирект на `https://домен/`
+- `https://www.домен/` → редирект на `https://домен/`
+- `https://домен/index.html` и URL со слешем на конце (`/page/`) → канонические редиректы
 - `view-source:` главной страницы (canonical/OG должны содержать ваш домен).
 
 Подробная инструкция: [`docs/DEPLOY_COOLIFY.md`](docs/DEPLOY_COOLIFY.md)

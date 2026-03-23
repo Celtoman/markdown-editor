@@ -6,7 +6,7 @@
   - stage build: `node:20-alpine` (`npm ci` + `npm run build`)
   - stage runtime: `nginx:1.27-alpine`
 - `docker/nginx.conf`:
-  - SPA fallback (`/index.html`)
+  - корректная отдача `404` для неизвестных URL через `error_page`
   - cache headers для `/assets/*`
   - security headers
   - health endpoint `/healthz`
@@ -40,6 +40,11 @@ Entrypoint fallback:
 - `https://ваш-домен/healthz` → `200 ok`
 - `https://ваш-домен/robots.txt` → содержит `Sitemap: https://ваш-домен/sitemap.xml`
 - `https://ваш-домен/sitemap.xml` → `<loc>https://ваш-домен/</loc>`
+- `https://ваш-домен/non-existent-page` → открывается кастомная `404` страница и возвращается HTTP `404`
+- `http://ваш-домен/` → `308` на `https://ваш-домен/`
+- `https://www.ваш-домен/` → `308` на `https://ваш-домен/`
+- `https://ваш-домен/index.html` → `308` на `https://ваш-домен/`
+- `https://ваш-домен/any-page/` → `308` на `https://ваш-домен/any-page`
 
 Проверка source:
 
@@ -60,6 +65,15 @@ docker run --rm -p 8080:80 -e SITE_URL=https://example.com interactive-markdown-
 - `http://localhost:8080/healthz`
 - `http://localhost:8080/robots.txt`
 - `http://localhost:8080/sitemap.xml`
+
+Проверка редиректов локально (эмуляция reverse proxy заголовков):
+
+```bash
+curl -I -H "X-Forwarded-Proto: http" http://localhost:8080/
+curl -I -H "Host: www.example.com" http://localhost:8080/
+curl -I http://localhost:8080/index.html
+curl -I http://localhost:8080/docs/
+```
 
 ## Типовые проблемы
 
